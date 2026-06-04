@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}电机查询 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.ms-header {
+    margin: -12px -12px 12px -12px;
+    padding: 14px 14px 10px;
+    background: linear-gradient(135deg, #1565c0 0%, #1e88e5 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.ms-header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
+.ms-header h1 { font-size: 18px; font-weight: 700; margin: 4px 0 0; }
+.ms-search-wrap {
+    background: var(--card-bg); border-radius: 24px;
+    padding: 4px 4px 4px 16px; display: flex; align-items: center; gap: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 14px;
+}
+.ms-search-wrap input {
+    flex: 1; border: none; outline: none; font-size: 15px; background: transparent;
+    padding: 8px 0; min-width: 0; color: var(--text);
+}
+.ms-search-wrap button {
+    width: 38px; height: 38px; border-radius: 50%; border: none;
+    background: var(--primary); color: #fff; font-size: 18px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.ms-hint { font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; }
+.ms-result-card {
+    background: var(--card-bg); border-radius: 12px; padding: 14px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 8px;
+    border-left: 4px solid #2e7d32;
+}
+.ms-r-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.ms-r-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.ms-r-code { font-size: 11px; color: var(--primary); flex-shrink: 0; }
+.ms-r-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px 12px;
+    margin-top: 6px; font-size: 12px; color: var(--text-secondary);
+}
+.ms-r-grid span i { font-size: 10px; margin-right: 2px; color: #999; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ms-header">
+    <a href="{{ url_for('motor.index') }}"><i class="bi bi-arrow-left"></i> 返回</a>
+    <h1><i class="bi bi-search"></i> 电机查询</h1>
+</div>
+
+<form>
+    <div class="ms-search-wrap">
+        <input type="search" name="q" placeholder="搜索电机编号、名称、型号、位置..." value="{{ query }}" autocomplete="off" autofocus>
+        <button type="submit"><i class="bi bi-search"></i></button>
+    </div>
+</form>
+<div class="ms-hint"><i class="bi bi-info-circle"></i> 支持搜索编号、名称、型号、房间号、盘柜号、位置</div>
+
+{% if motors %}
+<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">找到 {{ motors|length }} 台电机</div>
+{% for m in motors %}
+<div class="ms-result-card">
+    <div class="ms-r-top">
+        <div class="ms-r-name">{{ m.name }}</div>
+        {% if m.motor_code %}<div class="ms-r-code">#{{ m.motor_code }}</div>{% endif %}
+    </div>
+    <div class="ms-r-grid">
+        <span><i class="bi bi-lightning"></i> {{ m.voltage or '-' }}V / {{ m.power_kw or '-' }}kW</span>
+        <span><i class="bi bi-speedometer2"></i> {{ m.speed or '-' }} r/min</span>
+        <span>📐 {{ m.motor_model or '-' }}</span>
+        <span>🔢 {{ m.current_a or '-' }}A · CosΦ {{ m.power_factor or '-' }}</span>
+        <span><i class="bi bi-geo-alt"></i> {{ m.location or '-' }}</span>
+        <span>🏠 {{ m.room or '-' }} / {{ m.cabinet or '-' }}</span>
+        <span>🔩 前: {{ m.front_bearing or '-' }}</span>
+        <span>🔩 后: {{ m.rear_bearing or '-' }}</span>
+    </div>
+</div>
+{% endfor %}
+{% elif query %}
+<div class="empty-state"><i class="bi bi-search"></i><p>未找到匹配的电机</p></div>
+{% else %}
+<div class="empty-state" style="padding:50px 20px">
+    <i class="bi bi-search" style="font-size:48px;color:#ddd"></i>
+    <p style="margin-top:12px;font-size:15px;color:#999">输入关键字查询电机</p>
+</div>
+{% endif %}
+{% endblock %}

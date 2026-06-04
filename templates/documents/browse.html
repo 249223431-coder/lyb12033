@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}资料浏览 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.br-header {
+    margin: -12px -12px 12px -12px;
+    padding: 14px 14px 10px;
+    background: linear-gradient(135deg, #1a73e8 0%, #42a5f5 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.br-header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
+.br-header h1 { font-size: 18px; font-weight: 700; margin: 4px 0 0; }
+
+.br-breadcrumb {
+    display: flex; align-items: center; gap: 4px;
+    flex-wrap: wrap; font-size: 13px; margin-bottom: 10px;
+    padding: 8px 0;
+}
+.br-breadcrumb a { color: var(--primary); text-decoration: none; }
+.br-breadcrumb span { color: #999; }
+
+.br-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; background: var(--card-bg);
+    border-radius: 10px; margin-bottom: 6px;
+    text-decoration: none; color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: background 0.15s;
+}
+.br-item:active { background: #f5f5f5; }
+.br-item-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+}
+.br-item-info { flex: 1; min-width: 0; }
+.br-item-name {
+    font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.br-item-meta { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+.br-item-arrow { font-size: 14px; color: #ccc; flex-shrink: 0; }
+
+.br-section-title {
+    font-size: 13px; color: var(--text-secondary); margin: 10px 0 6px;
+    display: flex; align-items: center; gap: 4px;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="br-header">
+    <a href="{{ url_for('documents.index') }}"><i class="bi bi-arrow-left"></i> 返回资料</a>
+    <h1><i class="bi bi-folder2-open"></i> 资料浏览</h1>
+</div>
+
+{% if breadcrumbs %}
+<div class="br-breadcrumb">
+    <a href="{{ url_for('documents.browse') }}"><i class="bi bi-house-door"></i> 根目录</a>
+    {% for bc in breadcrumbs %}
+    <span>/</span>
+    {% if not loop.last %}
+    <a href="{{ url_for('documents.browse', subpath=bc.path) }}">{{ bc.name }}</a>
+    {% else %}
+    <span style="font-weight:600;color:var(--text)">{{ bc.name }}</span>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if folders %}
+<div class="br-section-title"><i class="bi bi-folder"></i> 文件夹 ({{ folders|length }})</div>
+{% for f in folders %}
+<a href="{{ url_for('documents.browse', subpath=f.path) }}" class="br-item">
+    <div class="br-item-icon" style="background:#fff3e0;color:#e65100">
+        <i class="bi bi-folder-fill"></i>
+    </div>
+    <div class="br-item-info">
+        <div class="br-item-name">{{ f.name }}</div>
+    </div>
+    <i class="bi bi-chevron-right br-item-arrow"></i>
+</a>
+{% endfor %}
+{% endif %}
+
+{% if files %}
+<div class="br-section-title"><i class="bi bi-file-earmark"></i> 文件 ({{ files|length }})</div>
+{% for f in files %}
+<a href="{{ f.static_url }}" target="_blank" class="br-item">
+    <div class="br-item-icon" style="background:{{ '#e3f2fd' if f.ext in ('pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv') else '#e8f5e9' if f.ext in ('jpg','jpeg','png','gif','bmp','svg') else '#f3e5f5' }}">
+        <i class="bi bi-{{ 'file-earmark-pdf' if f.ext == 'pdf' else 'file-earmark-image' if f.ext in ('jpg','jpeg','png','gif','bmp','svg') else 'file-earmark-zip' if f.ext in ('zip','rar','7z','tar','gz') else 'file-earmark-text' }}"></i>
+    </div>
+    <div class="br-item-info">
+        <div class="br-item-name">{{ f.name }}</div>
+        <div class="br-item-meta">{{ f.size }}</div>
+    </div>
+    <i class="bi bi-download br-item-arrow"></i>
+</a>
+{% endfor %}
+{% endif %}
+
+{% if not folders and not files %}
+<div class="empty-state" style="padding:60px 20px">
+    <i class="bi bi-folder2-open" style="font-size:52px;color:#ddd"></i>
+    <p style="margin-top:14px;font-size:15px;color:#999">此文件夹为空</p>
+    <small style="color:#bbb">将文件夹复制到 static\uploads 目录后即可浏览</small>
+</div>
+{% endif %}
+{% endblock %}

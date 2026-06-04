@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block title %}备件管理 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.sp-header {
+    margin: -12px -12px 12px -12px;
+    padding: 16px 16px 12px;
+    background: linear-gradient(135deg, #1a73e8 0%, #42a5f5 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.sp-header-top { display: flex; justify-content: space-between; align-items: center; }
+.sp-header h1 { font-size: 19px; font-weight: 700; margin: 0; }
+.sp-header-sub { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+.sp-header-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.sp-header-btns .btn { border-radius: 20px; font-size: 11px; padding: 5px 12px; }
+
+.sp-search-wrap {
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 4px 4px 4px 16px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    margin-bottom: 10px;
+}
+.sp-search-wrap input {
+    flex: 1; border: none; outline: none; font-size: 15px; background: transparent;
+    padding: 8px 0; min-width: 0; color: var(--text);
+}
+.sp-search-wrap input::placeholder { color: #bbb; }
+.sp-search-wrap button {
+    width: 38px; height: 38px; border-radius: 50%; border: none;
+    background: var(--primary); color: #fff; font-size: 18px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    flex-shrink: 0; transition: background 0.2s;
+}
+.sp-search-wrap button:hover { background: #1557b0; }
+
+.sp-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; }
+.sp-chip {
+    padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 500;
+    border: 1.5px solid var(--border); background: #fff; color: var(--text-secondary);
+    white-space: nowrap; text-decoration: none; transition: all 0.2s; flex-shrink: 0;
+}
+.sp-chip:hover { border-color: var(--primary); color: var(--primary); }
+.sp-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.sp-chip.warn { border-color: #fbbc04; color: #e65100; }
+.sp-chip.danger { border-color: #ea4335; color: #c62828; }
+.sp-chip.dark { border-color: #555; color: #333; }
+
+.sp-part-card {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card-bg); border-radius: 12px; padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 8px;
+    border-left: 4px solid #34a853; transition: transform 0.15s;
+}
+.sp-part-card:active { transform: scale(0.985); }
+.sp-part-card.stock-warn { border-left-color: #fbbc04; }
+.sp-part-card.stock-danger { border-left-color: #ea4335; animation: part-pulse 2s infinite; }
+@keyframes part-pulse {
+    0%,100% { border-left-color: #ea4335; }
+    50% { border-left-color: #f99; }
+}
+.sp-part-qty {
+    font-size: 22px; font-weight: 800; line-height: 1;
+    text-align: center; min-width: 48px; flex-shrink: 0;
+}
+.sp-part-qty .unit { font-size: 10px; font-weight: 400; display: block; color: var(--text-secondary); }
+.sp-part-qty.danger { color: #c62828; }
+.sp-part-qty.warn { color: #e65100; }
+.sp-part-qty.ok { color: #2e7d32; }
+
+.sp-part-info { flex: 1; min-width: 0; }
+.sp-part-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.sp-part-code { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.sp-part-loc { font-size: 10px; color: #999; margin-top: 1px; display: flex; align-items: center; gap: 3px; }
+
+.sp-part-act {
+    display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+}
+.sp-part-act .btn {
+    width: 34px; height: 34px; border-radius: 10px; padding: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+    border: 1.5px solid var(--border); background: #fff; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.15s;
+}
+.sp-part-act .btn:hover { border-color: var(--primary); color: var(--primary); }
+.sp-part-act .btn-in:hover { border-color: #34a853; color: #34a853; }
+.sp-part-act .btn-out:hover { border-color: #fbbc04; color: #e65100; }
+
+.sp-export-row {
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    padding: 12px 0 4px;
+}
+.sp-export-chip {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 14px; border-radius: 16px; font-size: 11px;
+    text-decoration: none; background: #f5f5f5; color: var(--text-secondary);
+    transition: all 0.2s;
+}
+.sp-export-chip:hover { background: var(--primary-light); color: var(--primary); }
+
+/* modal tweaks */
+.modal-header { border-bottom: none; padding: 16px 16px 8px; }
+.modal-body { padding: 8px 16px 16px; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="sp-header">
+    <div class="sp-header-top">
+        <div>
+            <h1><i class="bi bi-box-seam"></i> 备件库存</h1>
+            <div class="sp-header-sub">输入关键字搜索，或使用下方筛选查看</div>
+        </div>
+        <div class="sp-header-btns">
+            <a href="{{ url_for('spare_parts.purchase') }}" class="btn btn-light"><i class="bi bi-cart-plus"></i> 请购</a>
+            <a href="{{ url_for('spare_parts.transactions') }}" class="btn btn-light btn-sm" style="background:rgba(255,255,255,0.2);color:#fff;border:none"><i class="bi bi-arrow-left-right"></i> 记录</a>
+        </div>
+    </div>
+</div>
+
+<form>
+    <div class="sp-search-wrap">
+        <input type="search" name="search" placeholder="搜索编码、名称、规格..." value="{{ search }}" autocomplete="off">
+        <button type="submit"><i class="bi bi-search"></i></button>
+    </div>
+    <div class="sp-chips">
+        <a href="{{ url_for('spare_parts.index') }}" class="sp-chip {{ 'on' if not stock_status }}">全部</a>
+        <a href="?stock_status=warning" class="sp-chip warn {{ 'on' if stock_status=='warning' }}">⚠ 预警</a>
+        <a href="?stock_status=low" class="sp-chip danger {{ 'on' if stock_status=='low' }}">低库存</a>
+        <a href="?stock_status=out" class="sp-chip dark {{ 'on' if stock_status=='out' }}">缺货</a>
+    </div>
+</form>
+
+{% if has_filter %}
+{% for p in parts %}
+<div class="sp-part-card {{ 'stock-danger' if p.stock_quantity <= 0 else 'stock-warn' if p.stock_quantity <= p.warning_stock else '' }}">
+    <div class="sp-part-qty {{ 'danger' if p.stock_quantity <= 0 else 'warn' if p.stock_quantity <= p.warning_stock else 'ok' }}">
+        {{ p.stock_quantity }}<span class="unit">{{ p.unit }}</span>
+    </div>
+    <div class="sp-part-info">
+        <div class="sp-part-name">{{ p.name }}</div>
+        <div class="sp-part-code">编码 {{ p.part_code }}{% if p.model_spec %} · {{ p.model_spec }}{% endif %}</div>
+        <div class="sp-part-loc"><i class="bi bi-geo-alt"></i> {{ p.location or '未指定' }}{% if p.supplier %} · {{ p.supplier }}{% endif %}</div>
+    </div>
+    <div class="sp-part-act">
+        <button class="btn btn-in" data-bs-toggle="modal" data-bs-target="#inModal{{ p.id }}" title="入库"><i class="bi bi-box-arrow-in-down"></i></button>
+        <button class="btn btn-out" data-bs-toggle="modal" data-bs-target="#outModal{{ p.id }}" title="出库"><i class="bi bi-box-arrow-up"></i></button>
+        {% if current_user.is_admin %}
+        <button class="btn" data-bs-toggle="modal" data-bs-target="#editModal{{ p.id }}" title="编辑"><i class="bi bi-pencil"></i></button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="inModal{{ p.id }}" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen-sm-down"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">📥 入库 · {{ p.name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form method="POST" action="{{ url_for('spare_parts.transaction') }}">
+                <input type="hidden" name="part_id" value="{{ p.id }}"><input type="hidden" name="trans_type" value="in">
+                <div class="mb-3"><label class="form-label">入库数量 *</label><input type="number" name="quantity" class="form-control" required min="1" placeholder="数量"></div>
+                <div class="mb-3"><label class="form-label">库位 *</label><input type="text" name="location" class="form-control" value="{{ p.location or '' }}" required></div>
+                <div class="mb-3"><label class="form-label">操作人</label><input type="text" name="operator_name" class="form-control" value="{{ current_user.real_name }}"></div>
+                <div class="mb-3"><label class="form-label">用途/来源</label><input type="text" name="purpose" class="form-control"></div>
+                <div class="mb-3"><label class="form-label">备注</label><textarea name="remark" class="form-control" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-success w-100" style="border-radius:10px">确认入库</button>
+            </form>
+        </div>
+    </div></div>
+</div>
+
+<div class="modal fade" id="outModal{{ p.id }}" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen-sm-down"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">📤 出库 · {{ p.name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form method="POST" action="{{ url_for('spare_parts.transaction') }}">
+                <input type="hidden" name="part_id" value="{{ p.id }}"><input type="hidden" name="trans_type" value="out">
+                <div class="mb-3"><label class="form-label">出库数量 * (当前库存: {{ p.stock_quantity }})</label><input type="number" name="quantity" class="form-control" required min="1" max="{{ p.stock_quantity }}"></div>
+                <div class="mb-3"><label class="form-label">操作人</label><input type="text" name="operator_name" class="form-control" value="{{ current_user.real_name }}"></div>
+                <div class="mb-3"><label class="form-label">用途</label><input type="text" name="purpose" class="form-control"></div>
+                <div class="mb-3"><label class="form-label">备注</label><textarea name="remark" class="form-control" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-warning w-100" style="border-radius:10px">确认出库</button>
+            </form>
+        </div>
+    </div></div>
+</div>
+
+{% if current_user.is_admin %}
+<div class="modal fade" id="editModal{{ p.id }}" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen-sm-down"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">✏️ 编辑 · {{ p.name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form method="POST" action="{{ url_for('spare_parts.edit', part_id=p.id) }}">
+                <div class="row g-2 mb-2">
+                    <div class="col-8"><label class="form-label small">名称</label><input type="text" name="name" class="form-control" value="{{ p.name }}"></div>
+                    <div class="col-4"><label class="form-label small">单位</label><input type="text" name="unit" class="form-control" value="{{ p.unit }}"></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label small">型号规格</label><input type="text" name="model_spec" class="form-control" value="{{ p.model_spec or '' }}"></div>
+                    <div class="col-6"><label class="form-label small">分类</label><input type="text" name="category" class="form-control" value="{{ p.category or '' }}"></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label small">库位</label><input type="text" name="location" class="form-control" value="{{ p.location or '' }}"></div>
+                    <div class="col-6"><label class="form-label small">供应商</label><input type="text" name="supplier" class="form-control" value="{{ p.supplier or '' }}"></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-4"><label class="form-label small">安全库存</label><input type="number" name="safety_stock" class="form-control" value="{{ p.safety_stock }}"></div>
+                    <div class="col-4"><label class="form-label small">预警库存</label><input type="number" name="warning_stock" class="form-control" value="{{ p.warning_stock }}"></div>
+                    <div class="col-4"><label class="form-label small">单价</label><input type="number" step="0.01" name="price" class="form-control" value="{{ p.price }}"></div>
+                </div>
+                <div class="mb-3"><label class="form-label small">备注</label><textarea name="remark" class="form-control" rows="2">{{ p.remark or '' }}</textarea></div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1" style="border-radius:10px">保存</button>
+                    <form method="POST" action="{{ url_for('spare_parts.delete', part_id=p.id) }}" onsubmit="return confirm('确定停用此备件？')" class="flex-shrink-0">
+                        <button class="btn btn-outline-danger" style="border-radius:10px">停用</button>
+                    </form>
+                </div>
+            </form>
+        </div>
+    </div></div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% if not parts %}
+<div class="empty-state" style="padding:40px 20px"><i class="bi bi-search"></i><p>未找到匹配的备件</p></div>
+{% endif %}
+{% else %}
+<div class="empty-state" style="padding:60px 20px">
+    <i class="bi bi-search" style="font-size:52px;color:#ddd"></i>
+    <p style="margin-top:14px;font-size:15px;color:#999">请输入关键词搜索备件</p>
+    <small style="color:#bbb">支持搜索编码、名称、规格或供应商</small>
+</div>
+{% endif %}
+
+{% if current_user.is_admin %}
+<div class="sp-export-row">
+    <a href="{{ url_for('export.export_spare_parts_stock') }}" class="sp-export-chip"><i class="bi bi-box"></i> 库存</a>
+    <a href="{{ url_for('export.export_spare_parts_transactions') }}" class="sp-export-chip"><i class="bi bi-arrow-left-right"></i> 出入库</a>
+    <a href="{{ url_for('export.export_purchase') }}" class="sp-export-chip"><i class="bi bi-cart"></i> 请购</a>
+    <button class="sp-export-chip" data-bs-toggle="modal" data-bs-target="#addModal" style="border:none;cursor:pointer"><i class="bi bi-plus-lg"></i> 添加备件</button>
+</div>
+
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen-sm-down"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">➕ 添加备件</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form method="POST" action="{{ url_for('spare_parts.add') }}">
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label">编码 *</label><input type="text" name="part_code" class="form-control" required></div>
+                    <div class="col-6"><label class="form-label">名称 *</label><input type="text" name="name" class="form-control" required></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-8"><label class="form-label">型号规格</label><input type="text" name="model_spec" class="form-control"></div>
+                    <div class="col-4"><label class="form-label">单位</label><input type="text" name="unit" class="form-control" value="个"></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label">分类</label><input type="text" name="category" class="form-control"></div>
+                    <div class="col-6"><label class="form-label">库位</label><input type="text" name="location" class="form-control"></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-4"><label class="form-label">初始库存</label><input type="number" name="stock_quantity" class="form-control" value="0"></div>
+                    <div class="col-4"><label class="form-label">安全库存</label><input type="number" name="safety_stock" class="form-control" value="0"></div>
+                    <div class="col-4"><label class="form-label">预警库存</label><input type="number" name="warning_stock" class="form-control" value="0"></div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="form-label">单价</label><input type="number" step="0.01" name="price" class="form-control" value="0"></div>
+                    <div class="col-6"><label class="form-label">供应商</label><input type="text" name="supplier" class="form-control"></div>
+                </div>
+                <div class="mb-3"><label class="form-label">备注</label><textarea name="remark" class="form-control" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-primary w-100" style="border-radius:10px">添加备件</button>
+            </form>
+        </div>
+    </div></div>
+</div>
+{% endif %}
+{% endblock %}

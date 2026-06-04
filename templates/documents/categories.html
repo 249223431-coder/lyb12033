@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}分类管理 - 班组管理{% endblock %}
+{% block content %}
+<div class="section-title"><i class="bi bi-sliders"></i>资料分类管理</div>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-2">
+                <label class="form-label">分类名称</label>
+                <input type="text" name="name" class="form-control" required placeholder="例如: 图纸">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">描述</label>
+                <input type="text" name="description" class="form-control" placeholder="简要描述">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">排序</label>
+                <input type="number" name="sort_order" class="form-control" value="0">
+            </div>
+            <button type="submit" class="btn btn-primary w-100">添加分类</button>
+        </form>
+    </div>
+</div>
+<div class="card">
+    <div class="card-body p-0">
+        {% for cat in categories %}
+        <div class="d-flex align-items-center justify-content-between px-3 py-2" style="border-bottom:1px solid var(--border)">
+            <div>
+                <strong>{{ cat.name }}</strong>
+                <small class="text-muted ms-2">{{ cat.description }}</small>
+                <span class="badge bg-light text-dark ms-2">{{ cat.documents.count() }} 个文件</span>
+            </div>
+            <form method="POST" action="{{ url_for('documents.delete_category', cat_id=cat.id) }}" onsubmit="return confirm('确定删除？')">
+                <button class="btn btn-sm btn-outline-danger" style="border-radius:20px"><i class="bi bi-trash"></i></button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

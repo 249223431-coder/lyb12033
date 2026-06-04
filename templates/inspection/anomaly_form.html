@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}异常提报 - 班组管理{% endblock %}
+{% block content %}
+<div class="section-title"><i class="bi bi-exclamation-triangle"></i>异常提报</div>
+<div class="card">
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label class="form-label">异常等级</label>
+                <div class="d-flex gap-2">
+                    <label class="flex-fill d-flex align-items-center gap-2 p-2 rounded-3" style="border:2px solid #e0e0e0;cursor:pointer" id="normalLabel" onclick="setLevel('normal')">
+                        <input type="radio" name="level" value="normal" checked> ⚠️ 一般异常
+                    </label>
+                    <label class="flex-fill d-flex align-items-center gap-2 p-2 rounded-3" style="border:2px solid #e0e0e0;cursor:pointer" id="urgentLabel" onclick="setLevel('urgent')">
+                        <input type="radio" name="level" value="urgent"> 🔴 紧急异常
+                    </label>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">异常标题 *</label>
+                <input type="text" name="title" class="form-control" placeholder="简要描述异常情况" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">发生位置</label>
+                <input type="text" name="location" class="form-control" placeholder="例如: 1号变压器">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">详细描述</label>
+                <textarea name="description" class="form-control" rows="4" placeholder="请详细描述异常情况..."></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">拍照上传</label>
+                <input type="file" name="image" class="form-control" accept="image/*" capture="environment">
+            </div>
+            <button type="submit" class="btn btn-danger w-100"><i class="bi bi-send"></i> 提交异常报告</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function setLevel(level) {
+    document.querySelectorAll('input[name="level"]').forEach(r => r.checked = false);
+    document.querySelector('input[value="' + level + '"]').checked = true;
+    document.getElementById('normalLabel').style.borderColor = level === 'normal' ? '#e65100' : '#e0e0e0';
+    document.getElementById('normalLabel').style.background = level === 'normal' ? '#fff3e0' : '';
+    document.getElementById('urgentLabel').style.borderColor = level === 'urgent' ? '#c62828' : '#e0e0e0';
+    document.getElementById('urgentLabel').style.background = level === 'urgent' ? '#fce4ec' : '';
+}
+</script>
+{% endblock %}

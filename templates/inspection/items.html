@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}点检项目管理 - 班组管理{% endblock %}
+{% block content %}
+<div class="section-title"><i class="bi bi-gear"></i>点检项目管理</div>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row g-2 mb-2 align-items-end">
+                <div class="col-6"><label class="form-label small">项目名称 *</label><input type="text" name="name" class="form-control" required></div>
+                <div class="col-4"><label class="form-label small">检查周期</label>
+                    <select name="period_type" class="form-select">
+                        <option value="daily">每日</option>
+                        <option value="biweekly">每半月</option>
+                        <option value="weekly">每周</option>
+                        <option value="monthly">每月</option>
+                    </select>
+                </div>
+                <div class="col-2"><button type="submit" class="btn btn-primary w-100">添加</button></div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-2">
+    <div class="card-body p-0">
+        {% for item in items %}
+        <div class="px-3 py-2 d-flex align-items-center justify-content-between" style="border-bottom:1px solid var(--border)">
+            <div style="flex:1;min-width:0">
+                <div><strong>{{ item.name }}</strong> <small class="text-muted">[{{ {'daily':'每日','biweekly':'每半月','weekly':'每周','monthly':'每月'}.get(item.period_type, '') }}]</small></div>
+                <span class="badge {{ 'bg-success' if item.is_active else 'bg-secondary' }}">{{ '启用' if item.is_active else '停用' }}</span>
+            </div>
+            <div class="d-flex gap-1">
+                <form method="POST" action="{{ url_for('inspection.toggle_item', item_id=item.id) }}"><button class="btn btn-sm btn-outline-warning" style="border-radius:20px">{{ '停用' if item.is_active else '启用' }}</button></form>
+                <form method="POST" action="{{ url_for('inspection.delete_item', item_id=item.id) }}" onsubmit="return confirm('确定删除？')"><button class="btn btn-sm btn-outline-danger" style="border-radius:20px"><i class="bi bi-trash"></i></button></form>
+            </div>
+        </div>
+        {% endfor %}
+        {% if not items %}
+        <div class="empty-state"><i class="bi bi-clipboard"></i><p>暂无点检项目</p></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

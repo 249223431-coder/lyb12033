@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}成员管理 - 班组管理{% endblock %}
+{% block content %}
+<div class="section-title"><i class="bi bi-people-fill"></i>成员管理</div>
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.add_user') }}">
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label small">用户名 *</label><input type="text" name="username" class="form-control" required></div>
+                <div class="col-6"><label class="form-label small">密码 *</label><input type="password" name="password" class="form-control" required minlength="6" placeholder="至少6位"></div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label small">姓名 *</label><input type="text" name="real_name" class="form-control" required></div>
+                <div class="col-6"><label class="form-label small">手机号</label><input type="tel" name="phone" class="form-control"></div>
+            </div>
+            <div class="mb-3"><label class="form-label small">角色</label><select name="role" class="form-select"><option value="member">普通成员</option><option value="admin">管理员</option></select></div>
+            <button type="submit" class="btn btn-primary w-100">添加成员</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-body p-0">
+        {% for u in users %}
+        <div class="px-3 py-2 d-flex align-items-center justify-content-between" style="border-bottom:1px solid var(--border)">
+            <div style="flex:1;min-width:0">
+                <div class="d-flex align-items-center gap-2">
+                    <strong>{{ u.real_name }}</strong>
+                    <span class="badge {{ 'bg-primary' if u.is_admin else 'bg-secondary' }}">{{ '管理员' if u.is_admin else '成员' }}</span>
+                    {% if not u.is_active %}<span class="badge bg-danger">已禁用</span>{% endif %}
+                </div>
+                <small class="text-muted">@{{ u.username }} · {{ u.phone }}</small>
+            </div>
+            <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-outline-secondary" style="border-radius:20px" data-bs-toggle="modal" data-bs-target="#editUser{{ u.id }}"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-warning" style="border-radius:20px" data-bs-toggle="modal" data-bs-target="#resetPwd{{ u.id }}"><i class="bi bi-key"></i></button>
+                {% if u.username != 'admin' %}
+                <form method="POST" action="{{ url_for('admin.toggle_user', user_id=u.id) }}">
+                    <button class="btn btn-sm {{ 'btn-outline-success' if not u.is_active else 'btn-outline-danger' }}" style="border-radius:20px">{{ '启用' if not u.is_active else '禁用' }}</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="modal fade" id="editUser{{ u.id }}" tabindex="-1">
+            <div class="modal-dialog modal-fullscreen-sm-down"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">编辑成员</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ url_for('admin.edit_user', user_id=u.id) }}">
+                        <div class="mb-2"><label class="form-label">姓名</label><input type="text" name="real_name" class="form-control" value="{{ u.real_name }}"></div>
+                        <div class="mb-2"><label class="form-label">手机号</label><input type="tel" name="phone" class="form-control" value="{{ u.phone }}"></div>
+                        <div class="mb-3"><label class="form-label">角色</label><select name="role" class="form-select"><option value="member" {% if u.role=='member' %}selected{% endif %}>普通成员</option><option value="admin" {% if u.role=='admin' %}selected{% endif %}>管理员</option></select></div>
+                        <button type="submit" class="btn btn-primary w-100">保存</button>
+                    </form>
+                </div>
+            </div></div>
+        </div>
+
+        <div class="modal fade" id="resetPwd{{ u.id }}" tabindex="-1">
+            <div class="modal-dialog modal-fullscreen-sm-down"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">重置密码 - {{ u.real_name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ url_for('admin.reset_password', user_id=u.id) }}">
+                        <div class="mb-3"><label class="form-label">新密码</label><input type="password" name="new_password" class="form-control" required minlength="6"></div>
+                        <button type="submit" class="btn btn-warning w-100">重置密码</button>
+                    </form>
+                </div>
+            </div></div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

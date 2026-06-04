@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}发送通知 - 班组管理{% endblock %}
+{% block content %}
+<div class="section-title"><i class="bi bi-send"></i>发送通知</div>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">发送对象</label>
+                <select name="send_to" class="form-select">
+                    <option value="all">全部成员 ({{ users|length }}人)</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">通知标题 *</label>
+                <input type="text" name="title" class="form-control" required placeholder="如: 明日安全检查通知">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">通知内容</label>
+                <textarea name="content" class="form-control" rows="5" placeholder="请输入通知内容..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-send"></i> 发送通知</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}异常记录 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.anomaly-card { background: var(--card-bg); border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); margin-bottom: 10px; overflow: hidden; }
+.anomaly-header { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; }
+.anomaly-level-tag { font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 600; flex-shrink: 0; }
+.tag-urgent { background: #fce4ec; color: #c62828; }
+.tag-normal { background: #e3f2fd; color: #1565c0; }
+.anomaly-body { flex: 1; min-width: 0; }
+.anomaly-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.anomaly-meta { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+.anomaly-desc { font-size: 13px; color: var(--text); margin-top: 6px; line-height: 1.5; }
+.anomaly-status-bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #fafafa; border-top: 1px solid #f0f0f0; font-size: 11px; flex-wrap: wrap; }
+.status-tag { padding: 2px 10px; border-radius: 10px; font-weight: 500; }
+.tag-open { background: #fce4ec; color: #c62828; }
+.tag-processing { background: #fff3e0; color: #e65100; }
+.tag-resolved { background: #e6f4ea; color: #1e7e34; }
+.action-tag { padding: 2px 8px; border-radius: 8px; font-size: 10px; }
+.action-immediate { background: #e8f5e9; color: #2e7d32; }
+.action-observe { background: #fff8e1; color: #f57f17; }
+.action-shutdown { background: #fce4ec; color: #c62828; }
+.handle-form { padding: 10px 14px; border-top: 1px solid #f0f0f0; background: #f9fafb; }
+.handle-form-title { font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+.handle-options { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.handle-opt { padding: 6px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--card-bg); font-size: 12px; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; user-select: none; }
+.handle-opt.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+.handle-opt:hover { border-color: var(--primary); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+    <div class="section-title"><i class="bi bi-list-ul"></i>异常记录</div>
+    <div class="d-flex gap-1">
+        <a href="{{ url_for('inspection.anomaly') }}" class="btn btn-sm btn-danger"><i class="bi bi-plus-lg"></i> 提报</a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('export.export_anomaly') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i> 导出</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="d-flex gap-1 mb-3" style="overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:wrap">
+    <a href="{{ url_for('inspection.anomaly_list') }}" class="btn btn-sm {{ 'btn-primary' if not request.args.get('level') and not request.args.get('status') else 'btn-outline-primary' }}" style="border-radius:20px">全部</a>
+    <a href="?level=urgent" class="btn btn-sm {{ 'btn-danger' if request.args.get('level') == 'urgent' else 'btn-outline-danger' }}" style="border-radius:20px">紧急</a>
+    <a href="?level=normal" class="btn btn-sm {{ 'btn-primary' if request.args.get('level') == 'normal' else 'btn-outline-primary' }}" style="border-radius:20px">一般</a>
+    <a href="?status=open" class="btn btn-sm {{ 'btn-warning' if request.args.get('status') == 'open' else 'btn-outline-warning' }}" style="border-radius:20px">待处理</a>
+</div>
+
+{% set status_labels = {'open': '待处理', 'processing': '处理中', 'resolved': '已解决'} %}
+{% set action_labels = {'immediate': '立即处理', 'shutdown': '停机处理'} %}
+
+{% if reports %}
+    {% for r in reports %}
+    <div class="anomaly-card">
+        <div class="anomaly-header">
+            <span class="anomaly-level-tag {{ 'tag-urgent' if r.level=='urgent' else 'tag-normal' }}">{{ '🔴 紧急' if r.level=='urgent' else '⚠ 一般' }}</span>
+            <div class="anomaly-body">
+                <div class="anomaly-title">{{ r.title }}</div>
+                <div class="anomaly-meta">
+                    📍 {{ r.location or '未指定' }} · 👤 {{ r.user.real_name if r.user else '' }} · {{ r.created_at.strftime('%m-%d %H:%M') if r.created_at else '' }}
+                </div>
+                {% if r.description %}<div class="anomaly-desc">{{ r.description }}</div>{% endif %}
+                {% if r.image_path %}<div style="font-size:12px;color:#999;margin-top:4px">📷 已附带现场图片</div>{% endif %}
+            </div>
+        </div>
+
+        <div class="anomaly-status-bar">
+            <span class="status-tag {{ 'tag-open' if r.status=='open' else 'tag-processing' if r.status=='processing' else 'tag-resolved' }}">{{ status_labels.get(r.status, r.status) }}</span>
+            {% if r.handle_action %}
+            <span class="action-tag {{ 'action-immediate' if r.handle_action=='immediate' else 'action-observe' if r.handle_action=='observe' else 'action-shutdown' }}">{{ action_labels.get(r.handle_action, '') }}</span>
+            {% endif %}
+            {% if r.handler_note %}<small class="text-muted" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.handler_note[:30] }}{% if r.handler_note|length > 30 %}...{% endif %}</small>{% endif %}
+            {% if r.handle_media %}<span style="font-size:10px">📎</span>{% endif %}
+        </div>
+
+        {% if r.status != 'resolved' %}
+        <div class="handle-form">
+            <div class="handle-form-title"><i class="bi bi-tools"></i> 处理此异常</div>
+            <form method="POST" action="{{ url_for('inspection.handle_anomaly', report_id=r.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="handle_action" id="handleAction{{ r.id }}" value="{{ r.handle_action or 'immediate' }}">
+                <div class="handle-options" id="actionGroup{{ r.id }}">
+                    <span class="handle-opt {{ 'selected' if r.handle_action == 'immediate' or not r.handle_action }}" onclick="selectAction({{ r.id }}, 'immediate')">⚡ 立即处理</span>
+                    <span class="handle-opt {{ 'selected' if r.handle_action == 'shutdown' }}" onclick="selectAction({{ r.id }}, 'shutdown')">🛑 停机处理</span>
+                </div>
+                <div id="immediateExtra{{ r.id }}" style="display:{{ 'block' if r.handle_action == 'immediate' or not r.handle_action else 'none' }};margin-bottom:6px">
+                    <select name="status" class="form-select form-select-sm" style="width:auto">
+                        <option value="processing" {{ 'selected' if r.status == 'processing' }}>处理中</option>
+                        <option value="resolved" {{ 'selected' if r.status == 'resolved' }}>已解决</option>
+                    </select>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="text" name="handler_note" class="form-control form-control-sm" placeholder="填写处理过程和备注..." value="{{ r.handler_note or '' }}" style="flex:1">
+                    <input type="file" name="handle_media" accept="image/*,video/*,audio/*" style="width:0;height:0;position:absolute;opacity:0" id="mediaInput{{ r.id }}" onchange="updateMediaLabel({{ r.id }})">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('mediaInput{{ r.id }}').click()" style="border-radius:20px;white-space:nowrap;flex-shrink:0">
+                        <i class="bi bi-camera"></i> <span id="mediaLabel{{ r.id }}">拍照</span>
+                    </button>
+                    <button type="submit" class="btn btn-sm btn-primary" style="border-radius:20px;flex-shrink:0">保存</button>
+                </div>
+            </form>
+        </div>
+        {% elif r.status == 'resolved' and r.handler_note %}
+        <div style="padding:8px 14px;background:#f5f5f5;color:#666;font-size:12px;border-top:1px solid #f0f0f0">
+            ✅ 已处理: {{ r.handler_note }}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state"><i class="bi bi-check-circle"></i><p>暂无异常记录</p></div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectAction(reportId, action) {
+    var hidden = document.getElementById('handleAction' + reportId);
+    if (hidden) hidden.value = action;
+    var group = document.getElementById('actionGroup' + reportId);
+    var opts = group.querySelectorAll('.handle-opt');
+    for (var i = 0; i < opts.length; i++) opts[i].classList.remove('selected');
+    if (action === 'immediate') {
+        opts[0].classList.add('selected');
+    } else if (action === 'shutdown') {
+        opts[1].classList.add('selected');
+    }
+    var extra = document.getElementById('immediateExtra' + reportId);
+    if (extra) extra.style.display = action === 'immediate' ? 'block' : 'none';
+}
+
+function updateMediaLabel(reportId) {
+    var input = document.getElementById('mediaInput' + reportId);
+    var label = document.getElementById('mediaLabel' + reportId);
+    if (input.files.length > 0) {
+        label.textContent = '已选';
+        label.parentElement.classList.add('btn-outline-success');
+    } else {
+        label.textContent = '拍照';
+        label.parentElement.classList.remove('btn-outline-success');
+    }
+}
+</script>
+{% endblock %}

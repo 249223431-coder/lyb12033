@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}请购备件 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.purch-header {
+    margin: -12px -12px 14px -12px;
+    padding: 18px 16px 14px;
+    background: linear-gradient(135deg, #7b1fa2 0%, #9c27b0 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.purch-header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
+.purch-header h1 { font-size: 18px; font-weight: 700; margin: 6px 0 0; }
+.purch-form-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 18px 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    margin-bottom: 12px;
+}
+.search-hint { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+.purch-search-wrap { position: relative; }
+.purch-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.purch-dropdown-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+}
+.purch-dropdown-item:hover { background: var(--primary-light); }
+.purch-dropdown-item:last-child { border-bottom: none; }
+.purch-dropdown-item .part-name { font-weight: 500; }
+.purch-dropdown-item .part-spec { font-size: 11px; color: var(--text-secondary); }
+.purch-dropdown-item .part-code { font-size: 10px; color: #999; }
+.purch-file-btn {
+    padding: 10px 18px;
+    border-radius: 20px;
+    border: 1.5px dashed var(--border);
+    background: #fafafa;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--primary);
+}
+.purch-file-btn:hover { border-color: var(--primary); background: var(--primary-light); }
+.purch-file-name { font-size: 12px; color: var(--text-secondary); margin-left: 8px; }
+.purch-submit-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #7b1fa2, #9c27b0);
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+.purch-submit-btn:active { transform: scale(0.98); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="purch-header">
+    <a href="{{ url_for('spare_parts.purchase_list') }}"><i class="bi bi-arrow-left"></i> 请购列表</a>
+    <h1><i class="bi bi-cart-plus"></i> 请购备件</h1>
+</div>
+
+<div class="purch-form-card">
+    <form method="POST" enctype="multipart/form-data" onsubmit="return beforeSubmit()">
+        <div class="mb-3">
+            <label class="form-label">备件名称 *</label>
+            <div class="purch-search-wrap">
+                <input type="text" id="partSearch" class="form-control" placeholder="输入关键字从库中搜索，或直接填写名称" autocomplete="off" oninput="searchParts()" onfocus="searchParts()">
+                <input type="hidden" name="part_name" id="partName" value="">
+                <div class="purch-dropdown" id="partDropdown"></div>
+            </div>
+            <div class="search-hint">
+                <i class="bi bi-info-circle"></i> 输入名称关键字从库存中搜索选择，库中没有的备件直接填写即可
+            </div>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-7">
+                <label class="form-label">型号规格</label>
+                <input type="text" name="model_spec" id="modelSpec" class="form-control" placeholder="型号或规格参数">
+            </div>
+            <div class="col-5">
+                <label class="form-label">请购数量</label>
+                <input type="number" name="quantity" class="form-control" value="1" min="1">
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">请购目的 *</label>
+            <textarea name="purpose" class="form-control" rows="3" placeholder="请说明请购此备件的原因或用途" required></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">实物照片（可选）</label>
+            <div>
+                <button type="button" class="purch-file-btn" onclick="document.getElementById('purchFile').click()">
+                    <i class="bi bi-camera"></i> 拍照/选择照片
+                </button>
+                <span class="purch-file-name" id="purchFileName">未选择</span>
+                <input type="file" name="image" id="purchFile" accept="image/*" style="display:none" onchange="showFileName()">
+            </div>
+        </div>
+        <button type="submit" class="purch-submit-btn"><i class="bi bi-send"></i> 提交请购</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var searchTimer = null;
+function beforeSubmit() {
+    var pn = document.getElementById('partName').value.trim();
+    if (!pn) {
+        pn = document.getElementById('partSearch').value.trim();
+        document.getElementById('partName').value = pn;
+    }
+    if (!pn) {
+        alert('请填写备件名称');
+        return false;
+    }
+    return true;
+}
+function searchParts() {
+    clearTimeout(searchTimer);
+    var q = document.getElementById('partSearch').value.trim();
+    if (q.length < 1) {
+        document.getElementById('partDropdown').style.display = 'none';
+        return;
+    }
+    searchTimer = setTimeout(function() {
+        fetch('/spare_parts/api/search?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => {
+                var dd = document.getElementById('partDropdown');
+                if (data.length === 0) {
+                    dd.innerHTML = '<div class="purch-dropdown-item" style="color:#999">未找到匹配备件，可直接填写名称</div>';
+                } else {
+                    var html = '';
+                    data.forEach(p => {
+                        html += '<div class="purch-dropdown-item" onclick="selectPart(\'' + escAttr(p.name) + '\', \'' + escAttr(p.model_spec) + '\')">' +
+                            '<div class="part-name">' + p.name + '</div>' +
+                            '<div class="part-spec">' + (p.model_spec || '-') + '</div>' +
+                            '<div class="part-code">编码: ' + p.part_code + '</div>' +
+                            '</div>';
+                    });
+                    dd.innerHTML = html;
+                }
+                dd.style.display = 'block';
+            });
+    }, 300);
+}
+function selectPart(name, spec) {
+    document.getElementById('partSearch').value = name;
+    document.getElementById('partName').value = name;
+    if (spec) document.getElementById('modelSpec').value = spec;
+    document.getElementById('partDropdown').style.display = 'none';
+}
+function escAttr(s) { return (s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+function showFileName() {
+    var f = document.getElementById('purchFile').files[0];
+    document.getElementById('purchFileName').textContent = f ? f.name : '未选择';
+}
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.purch-search-wrap')) {
+        document.getElementById('partDropdown').style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

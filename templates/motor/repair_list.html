@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}维修记录 - 电机管理{% endblock %}
+{% block extra_css %}
+<style>
+.rl-header {
+    margin: -12px -12px 14px -12px;
+    padding: 14px 14px 10px;
+    background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.rl-header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
+.rl-header h1 { font-size: 18px; font-weight: 700; margin: 4px 0 0; }
+.rl-card {
+    background: var(--card-bg); border-radius: 12px; padding: 14px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 8px;
+    border-left: 4px solid #7b1fa2;
+}
+.rl-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.rl-name { font-size: 15px; font-weight: 600; }
+.rl-meta { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+.rl-status { font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 600; flex-shrink: 0; }
+.rl-status-draft { background: #fff3e0; color: #e65100; }
+.rl-status-done { background: #e6f4ea; color: #1e7e34; }
+.rl-actions { display: flex; gap: 6px; margin-top: 8px; }
+.rl-actions .btn { font-size: 11px; padding: 4px 12px; border-radius: 14px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="rl-header">
+    <a href="{{ url_for('motor.index') }}"><i class="bi bi-arrow-left"></i> 返回</a>
+    <h1><i class="bi bi-list-ul"></i> 维修记录</h1>
+</div>
+
+<div class="mb-3">
+    <a href="{{ url_for('motor.repair') }}" class="btn btn-sm btn-primary" style="border-radius:20px"><i class="bi bi-plus-lg"></i> 新建申请</a>
+</div>
+
+{% if records %}
+{% for r in records %}
+<div class="rl-card">
+    <div class="rl-top">
+        <div>
+            <div class="rl-name">{{ r.repair_name }}</div>
+            <div class="rl-meta">
+                {{ r.model_spec or '-' }} · {{ r.use_location or '-' }} · {{ r.user.real_name if r.user else '' }} · {{ r.created_at.strftime('%m-%d %H:%M') if r.created_at }}
+            </div>
+        </div>
+        <span class="rl-status {{ 'rl-status-done' if r.status == 'done' else 'rl-status-draft' }}">
+            {{ '已完成' if r.status == 'done' else '草稿' }}
+        </span>
+    </div>
+    <div class="rl-actions">
+        <a href="{{ url_for('motor.repair_edit', rid=r.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> 编辑</a>
+        <a href="{{ url_for('motor.repair_export', rid=r.id) }}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 导出</a>
+        {% if current_user.is_admin %}
+        <form method="POST" action="{{ url_for('motor.repair_delete', rid=r.id) }}" onsubmit="return confirm('确定删除此记录？')" style="display:inline">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> 删除</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state" style="padding:40px 20px"><i class="bi bi-inbox"></i><p>暂无维修记录</p></div>
+{% endif %}
+{% endblock %}

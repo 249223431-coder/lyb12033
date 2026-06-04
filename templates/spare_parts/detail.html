@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}备件详情 - 班组管理{% endblock %}
+{% block content %}
+<div class="section-title"><i class="bi bi-info-circle"></i>备件详情</div>
+<div class="card">
+    <div class="card-body">
+        <div class="text-center mb-3">
+            <div style="font-size:36px;font-weight:700;color:{{ '#c62828' if part.stock_quantity <= 0 else '#2e7d32' }}">{{ part.stock_quantity }}</div>
+            <div style="font-size:13px;color:var(--text-secondary)">当前库存 ({{ part.unit }})</div>
+        </div>
+        <table class="table table-sm">
+            <tr><td class="text-muted" style="width:30%">编码</td><td>{{ part.part_code }}</td></tr>
+            <tr><td class="text-muted">名称</td><td>{{ part.name }}</td></tr>
+            <tr><td class="text-muted">型号规格</td><td>{{ part.model_spec or '-' }}</td></tr>
+            <tr><td class="text-muted">分类</td><td>{{ part.category or '-' }}</td></tr>
+            <tr><td class="text-muted">库位</td><td>{{ part.location or '-' }}</td></tr>
+            <tr><td class="text-muted">安全库存</td><td>{{ part.safety_stock }}</td></tr>
+            <tr><td class="text-muted">预警库存</td><td>{{ part.warning_stock }}</td></tr>
+            <tr><td class="text-muted">供应商</td><td>{{ part.supplier or '-' }}</td></tr>
+            <tr><td class="text-muted">单价</td><td>¥{{ '%.2f'|format(part.price) if part.price else '-' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+<div class="section-title"><i class="bi bi-clock-history"></i>最近出入库记录</div>
+<div class="card">
+    <div class="card-body p-0">
+        {% for t in transactions %}
+        <div class="px-3 py-2 d-flex align-items-center gap-2" style="border-bottom:1px solid var(--border)">
+            <span class="badge {{ 'bg-success' if t.trans_type == 'in' else 'bg-warning text-dark' }}">{{ '入库' if t.trans_type == 'in' else '出库' }}</span>
+            <div style="flex:1">{{ t.quantity }} {{ part.unit }}</div>
+            <small class="text-muted">{{ t.created_at }}</small>
+        </div>
+        {% endfor %}
+        {% if not transactions %}
+        <div class="empty-state py-4"><p class="small">暂无记录</p></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

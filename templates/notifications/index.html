@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}通知中心 - 班组管理{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+    <div class="section-title"><i class="bi bi-bell"></i>通知中心</div>
+    <div class="d-flex gap-1">
+        <a href="{{ url_for('notifications.send') }}" class="btn btn-sm btn-primary"><i class="bi bi-send"></i> 发送</a>
+        <form method="POST" action="{{ url_for('notifications.read_all') }}" class="d-inline">
+            <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-check-all"></i> 全部已读</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if notifications %}
+            {% for n in notifications %}
+            <div class="px-3 py-3 d-flex align-items-start gap-2" style="border-bottom:1px solid var(--border); {{ 'background:#f0f7ff' if not n.is_read }}">
+                <a href="{{ url_for('notifications.detail', notification_id=n.id) }}" class="text-decoration-none text-dark d-flex align-items-start gap-2" style="flex:1;min-width:0">
+                    <div style="width:40px;height:40px;border-radius:50%;background:{{ '#e3f2fd' if not n.is_read else '#f5f5f5' }};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+                        <i class="bi bi-{{ 'bell-fill' if not n.is_read else 'bell' }}" style="color:{{ '#1a73e8' if not n.is_read else '#999' }}"></i>
+                    </div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:{{ '600' if not n.is_read else '400' }};font-size:14px">{{ n.title }}</div>
+                        <div style="font-size:12px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">
+                            {{ n.content[:100] }}{% if n.content|length > 100 %}...{% endif %}
+                        </div>
+                        <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">{{ n.created_at }}</div>
+                    </div>
+                    {% if not n.is_read %}
+                    <span class="badge bg-primary rounded-pill" style="flex-shrink:0">新</span>
+                    {% endif %}
+                </a>
+                {% if current_user.is_admin %}
+                <form method="POST" action="{{ url_for('notifications.delete', notif_id=n.id) }}" onsubmit="return confirm('确定删除该通知吗？')" style="flex-shrink:0;margin-top:2px">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" style="padding:2px 8px;font-size:11px">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-bell-slash"></i>
+                <p>暂无通知</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

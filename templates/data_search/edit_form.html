@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}编辑 - {{ form.title }}{% endblock %}
+{% block extra_css %}
+<style>
+.ef-header {
+    margin: -12px -12px 14px -12px;
+    padding: 16px 16px 12px;
+    background: linear-gradient(135deg, #1565c0 0%, #1e88e5 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.ef-header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
+.ef-header h1 { font-size: 18px; font-weight: 700; margin: 6px 0 0; }
+.ef-section {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    margin-bottom: 12px;
+}
+.ef-form-row { display: flex; gap: 6px; margin-bottom: 8px; align-items: flex-end; flex-wrap: wrap; }
+.ef-form-row .form-control, .ef-form-row .form-select { flex: 1; min-width: 0; font-size: 13px; padding: 8px 10px; }
+.ef-form-row .form-control.small { max-width: 100px; flex: none; }
+.ef-form-row .btn { padding: 8px 14px; font-size: 13px; flex-shrink: 0; }
+.ef-form-row.two-col { }
+.ef-form-row.two-col .form-control { flex: 1; min-width: 0; }
+.ef-field-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #fafafa;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    border: 1px solid #f0f0f0;
+}
+.ef-field-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.ef-field-info { flex: 1; min-width: 0; }
+.ef-field-name { font-size: 13px; font-weight: 500; }
+.ef-field-meta { font-size: 10px; color: var(--text-secondary); margin-top: 1px; }
+.ef-field-meta .req { color: var(--danger); font-weight: 600; }
+.ef-field-del { flex-shrink: 0; }
+.ef-field-del .btn { padding: 4px 8px; font-size: 10px; }
+.ef-empty { text-align: center; padding: 20px 0; color: #bbb; font-size: 13px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ef-header">
+    <a href="{{ url_for('data_search.manage') }}"><i class="bi bi-arrow-left"></i> 返回管理</a>
+    <h1><i class="bi bi-pencil"></i> 编辑采集表</h1>
+</div>
+
+<div class="ef-section">
+    <div class="section-title-text" style="font-size:14px;margin-bottom:10px"><i class="bi bi-info-circle"></i> 基本信息</div>
+    <form method="POST" action="{{ url_for('data_search.edit_form', form_id=form.id) }}">
+        <div class="ef-form-row">
+            <input type="text" name="title" class="form-control" value="{{ form.title }}" placeholder="标题" required>
+            <input type="text" name="icon" class="form-control small" value="{{ form.icon or 'bi-clipboard' }}" placeholder="图标">
+        </div>
+        <div class="ef-form-row two-col">
+            <input type="text" name="description" class="form-control" value="{{ form.description or '' }}" placeholder="描述（可选）">
+        </div>
+        <div class="d-flex gap-3 align-items-center" style="margin-top:4px">
+            <label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="checkbox" name="is_active" {{ 'checked' if form.is_active }}> 启用
+            </label>
+            <button type="submit" class="btn btn-sm btn-primary" style="border-radius:20px">保存基本信息</button>
+        </div>
+    </form>
+</div>
+
+<div class="ef-section">
+    <div class="section-title-text" style="font-size:14px;margin-bottom:10px"><i class="bi bi-plus-circle"></i> 添加字段</div>
+    <form method="POST" action="{{ url_for('data_search.add_field', form_id=form.id) }}">
+        <div class="ef-form-row">
+            <input type="text" name="label" class="form-control" placeholder="字段名称" required>
+            <select name="field_type" class="form-select" style="max-width:100px;flex:none" onchange="toggleOptions(this)">
+                <option value="text">文本</option>
+                <option value="number">数字</option>
+                <option value="textarea">多行文本</option>
+                <option value="select">下拉选择</option>
+                <option value="radio">单选</option>
+                <option value="checkbox">多选</option>
+                <option value="date">日期</option>
+                <option value="file">文件上传</option>
+            </select>
+        </div>
+        <input type="text" name="placeholder" class="form-control" placeholder="占位提示（可选）" style="font-size:13px;margin-bottom:6px">
+        <textarea name="options" class="form-control" placeholder="选项（用于下拉/单选/多选，每行一个选项）" style="font-size:13px;min-height:60px;display:none" id="optionsArea"></textarea>
+        <div class="d-flex justify-content-between align-items-center" style="margin-top:6px">
+            <label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="checkbox" name="required"> 必填
+            </label>
+            <button type="submit" class="btn btn-sm btn-primary" style="border-radius:20px">添加字段</button>
+        </div>
+    </form>
+</div>
+
+{% if fields %}
+<div class="ef-section">
+    <div class="section-title-text" style="font-size:14px;margin-bottom:10px">
+        <i class="bi bi-list-ul"></i> 已有字段 ({{ fields|length }})
+    </div>
+    {% for f in fields %}
+    <div class="ef-field-card">
+        {% set type_colors = {
+            'text': ('#e3f2fd', '#1565c0'), 'number': ('#e8f5e9', '#2e7d32'),
+            'textarea': ('#fff3e0', '#e65100'), 'select': ('#f3e5f5', '#7b1fa2'),
+            'radio': ('#e0f2f1', '#00695c'), 'checkbox': ('#ede7f6', '#4527a0'),
+            'date': ('#fff8e1', '#e65100'), 'file': ('#fce4ec', '#c62828')
+        } %}
+        {% set tc = type_colors.get(f.field_type, ('#f5f5f5', '#666')) %}
+        <span class="ef-field-tag" style="background:{{ tc[0] }};color:{{ tc[1] }}">{{ {
+            'text':'文本', 'number':'数字', 'textarea':'多行', 'select':'下拉',
+            'radio':'单选', 'checkbox':'多选', 'date':'日期', 'file':'文件'
+        }.get(f.field_type, f.field_type) }}</span>
+        <div class="ef-field-info">
+            <div class="ef-field-name">{{ f.label }} {% if f.required %}<span class="req">*必填</span>{% endif %}</div>
+            <div class="ef-field-meta">
+                {% if f.field_type in ('select', 'radio', 'checkbox') and f.get_options() %}
+                选项: {{ f.get_options()|join(', ') }}
+                {% elif f.placeholder %}
+                提示: {{ f.placeholder }}
+                {% endif %}
+            </div>
+        </div>
+        <div class="ef-field-del">
+            <form method="POST" action="{{ url_for('data_search.delete_field', field_id=f.id) }}" onsubmit="return confirm('确定删除字段「{{ f.label }}」？')">
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="ef-section"><div class="ef-empty">暂无字段，请添加</div></div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleOptions(sel) {
+    var area = document.getElementById('optionsArea');
+    var type = sel.value;
+    if (type === 'select' || type === 'radio' || type === 'checkbox') {
+        area.style.display = 'block';
+    } else {
+        area.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

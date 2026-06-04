@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}请购记录 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.pl-header {
+    margin: -12px -12px 14px -12px;
+    padding: 16px 16px 12px;
+    background: linear-gradient(135deg, #7b1fa2 0%, #9c27b0 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.pl-header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
+.pl-header h1 { font-size: 18px; font-weight: 700; margin: 6px 0 0; }
+.pl-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    margin-bottom: 8px;
+}
+.pl-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.pl-name { font-size: 15px; font-weight: 600; }
+.pl-meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.pl-reason {
+    font-size: 13px; color: var(--text); margin-top: 6px;
+    background: #f9fafb; padding: 8px 12px; border-radius: 8px;
+}
+.pl-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.pl-status { font-size: 11px; padding: 3px 10px; border-radius: 10px; font-weight: 600; }
+.pl-status-pending { background: #fff3e0; color: #e65100; }
+.pl-status-confirmed { background: #e6f4ea; color: #1e7e34; }
+.pl-status-cancelled { background: #fce4ec; color: #c62828; }
+.pl-actions { display: flex; gap: 6px; }
+.pl-section-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.low-stock-card {
+    background: #fff5f5; border-radius: 12px; padding: 10px 14px;
+    margin-bottom: 6px; border: 1px solid #fce4ec;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.low-stock-name { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; }
+.low-stock-qty { font-size: 18px; font-weight: 700; color: #c62828; flex-shrink: 0; margin-left: 8px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="pl-header">
+    <a href="{{ url_for('spare_parts.index') }}"><i class="bi bi-arrow-left"></i> 备件管理</a>
+    <h1><i class="bi bi-cart-check"></i> 请购记录</h1>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+    <a href="{{ url_for('spare_parts.purchase') }}" class="btn btn-sm btn-primary" style="border-radius:20px"><i class="bi bi-plus-lg"></i> 新增请购</a>
+    <a href="{{ url_for('spare_parts.index') }}" class="btn btn-sm btn-outline-primary" style="border-radius:20px">备件库存</a>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('export.export_purchase') }}" class="btn btn-sm btn-outline-success" style="border-radius:20px"><i class="bi bi-download"></i> 导出</a>
+    {% endif %}
+</div>
+
+{% if low_stock_parts %}
+<div class="pl-section-title"><i class="bi bi-exclamation-triangle-fill" style="color:#c62828"></i> 低库存预警</div>
+{% for p in low_stock_parts[:5] %}
+<div class="low-stock-card">
+    <div class="low-stock-name">{{ p.name }} <small style="color:var(--text-secondary)">{{ p.model_spec or '' }}</small></div>
+    <div class="low-stock-qty">{{ p.stock_quantity }}</div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if reqs %}
+<div class="pl-section-title" style="margin-top:12px"><i class="bi bi-list-ul"></i> 请购记录 ({{ reqs|length }})</div>
+{% for r in reqs %}
+<div class="pl-card">
+    <div class="pl-top">
+        <div style="flex:1;min-width:0">
+            <div class="pl-name">{{ r.part_name }}</div>
+            <div class="pl-meta">
+                {{ r.model_spec or '-' }} · {{ r.quantity }} 个 · {{ r.user.real_name if r.user else '' }} · {{ r.created_at.strftime('%m-%d %H:%M') if r.created_at }}
+            </div>
+        </div>
+        <span class="pl-status {{ 'pl-status-pending' if r.status == 'pending' else 'pl-status-confirmed' if r.status == 'confirmed' else 'pl-status-cancelled' }}">
+            {{ {'pending': '待确认', 'confirmed': '已确认', 'cancelled': '已取消'}.get(r.status, r.status) }}
+        </span>
+    </div>
+    {% if r.purpose %}<div class="pl-reason">📝 {{ r.purpose }}</div>{% endif %}
+    <div class="pl-bottom">
+        {% if r.image_path %}
+        <a href="{{ url_for('static', filename='uploads/' + r.image_path) }}" target="_blank" style="font-size:12px;color:var(--primary);text-decoration:none">📷 查看照片</a>
+        {% else %}<span></span>{% endif %}
+        {% if current_user.is_admin %}
+        <div class="pl-actions">
+            <form method="POST" action="{{ url_for('spare_parts.purchase_status', req_id=r.id) }}" style="display:flex;gap:4px">
+                <input type="hidden" name="status" value="confirmed">
+                <button class="btn btn-sm btn-outline-success" style="border-radius:15px;font-size:11px">确认</button>
+            </form>
+            <form method="POST" action="{{ url_for('spare_parts.purchase_status', req_id=r.id) }}" style="display:inline">
+                <input type="hidden" name="status" value="cancelled">
+                <button class="btn btn-sm btn-outline-danger" style="border-radius:15px;font-size:11px">取消</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state" style="padding:30px 20px"><i class="bi bi-inbox"></i><p>暂无请购记录</p></div>
+{% endif %}
+{% endblock %}

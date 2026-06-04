@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}提交记录 - {{ form.title }}{% endblock %}
+{% block extra_css %}
+<style>
+.sv-header {
+    margin: -12px -12px 14px -12px;
+    padding: 16px 16px 12px;
+    background: linear-gradient(135deg, #2e7d32 0%, #43a047 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.sv-header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
+.sv-header h1 { font-size: 18px; font-weight: 700; margin: 6px 0 0; }
+.sv-header p { font-size: 12px; opacity: 0.8; margin: 2px 0 0; }
+.sv-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.sv-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--card-bg); border-radius: 12px; overflow: hidden; }
+.sv-table th { background: #f5f5f5; color: var(--text-secondary); font-weight: 600; padding: 10px 8px; text-align: left; white-space: nowrap; border-bottom: 1px solid #e0e0e0; font-size: 11px; }
+.sv-table td { padding: 8px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+.sv-table tr:last-child td { border-bottom: none; }
+.sv-sub-id { font-size: 10px; color: #999; }
+.sv-time { font-size: 10px; color: #999; }
+.sv-file-link { font-size: 11px; color: var(--primary); text-decoration: none; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="sv-header">
+    <a href="{{ url_for('data_search.manage') }}"><i class="bi bi-arrow-left"></i> 返回管理</a>
+    <h1><i class="bi {{ form.icon or 'bi-clipboard' }}"></i> {{ form.title }}</h1>
+    <p>共 {{ data|length }} 条提交记录</p>
+</div>
+
+{% if data %}
+<div class="sv-table-wrap">
+    <table class="sv-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>提交人</th>
+                <th>时间</th>
+                {% for f in fields %}
+                <th>{{ f.label }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                <td><span class="sv-sub-id">{{ row.sub.id }}</span></td>
+                <td style="white-space:nowrap">{{ row.sub.user.real_name if row.sub.user else '' }}</td>
+                <td><span class="sv-time">{{ row.sub.created_at.strftime('%m-%d %H:%M') if row.sub.created_at }}</span></td>
+                {% for f in fields %}
+                <td>
+                    {% set val = row[f.id] %}
+                    {% if f.field_type == 'file' and val %}
+                    <a href="{{ url_for('static', filename='uploads/' + val) }}" class="sv-file-link" target="_blank">📎 查看</a>
+                    {% elif f.field_type == 'checkbox' %}
+                    {{ val.replace('\n', ', ') }}
+                    {% else %}
+                    {{ val[:50] }}{% if val|length > 50 %}...{% endif %}
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state"><i class="bi bi-inbox"></i><p>暂无提交记录</p></div>
+{% endif %}
+{% endblock %}

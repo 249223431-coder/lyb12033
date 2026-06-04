@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}数据看板 - 班组管理{% endblock %}
+{% block content %}
+
+<div class="dash-header {% if overall_status == 'critical' %}dash-header-critical{% elif overall_status == 'warning' %}dash-header-warning{% endif %}">
+    <div class="dash-header-top">
+        <div class="dash-title-row">
+            <i class="bi bi-speedometer2 dash-icon-pulse"></i>
+            <div>
+                <h5 class="dash-title">设备运行监控</h5>
+                <span class="dash-subtitle" id="updateTime">{{ tags_data[0].updated_at if tags_data else '--:--:--' }}</span>
+            </div>
+        </div>
+        <div class="dash-status-chip">
+            {% if plc_status == 'connected' %}
+            <span class="chip-ok"><i class="bi bi-check-circle-fill"></i> PLC在线</span>
+            {% elif plc_status == 'stopped' %}
+            <span class="chip-warn"><i class="bi bi-pause-circle-fill"></i> PLC停止</span>
+            {% elif plc_status == 'disconnected' %}
+            <span class="chip-err"><i class="bi bi-x-circle-fill"></i> 断开连接</span>
+            {% else %}
+            <span class="chip-sim"><i class="bi bi-cpu"></i> 模拟模式</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="dash-status-text">
+        {% if overall_status == 'critical' %}
+        <span class="blink-text">🔴 报警中 — 存在数据超限，请立即处理</span>
+        {% elif overall_status == 'warning' %}
+        <span>⚠️ 注意 — 部分数据接近上限</span>
+        {% else %}
+        <span>✅ 系统运行正常</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="gauge-grid">
+    {% for tag in tags_data %}
+    <div class="gauge-card-v3 {{ 'gauge-critical' if tag.status == 'critical' else 'gauge-warning' if tag.status == 'warning' }}">
+        <div class="gauge-ring-wrap">
+            <svg class="gauge-ring" viewBox="0 0 100 100">
+                <circle class="gauge-bg" cx="50" cy="50" r="42"
+                    stroke="#e8eaed" stroke-width="7" fill="none" />
+                <circle class="gauge-fill {{ 'fill-critical' if tag.status == 'critical' else 'fill-warning' if tag.status == 'warning' else 'fill-normal' }}"
+                    cx="50" cy="50" r="42" stroke-width="7" fill="none"
+                    stroke-linecap="round"
+                    stroke-dasharray="{{ tag.pct * 2.64 }} 264"
+                    transform="rotate(135 50 50)" />
+            </svg>
+            <div class="gauge-center">
+                <i class="bi {{ tag.icon }} gauge-icon"></i>
+            </div>
+        </div>
+        <div class="gauge-info">
+            <div class="gauge-value-v3 {{ 'text-critical' if tag.status == 'critical' else 'text-warning' if tag.status == 'warning' }}">
+                {{ '%.1f'|format(tag.value) }}<small>{{ tag.unit }}</small>
+            </div>
+            <div class="gauge-label-v3">{{ tag.label }}</div>
+            <div class="gauge-limits">
+                <span class="lim-warn">⚠ {{ tag.warn }}</span>
+                <span class="lim-crit">🔴 {{ tag.critical }}</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="section-title-wrap">
+    <span class="section-title-text"><i class="bi bi-exclamation-diamond-fill"></i>报警信号</span>
+    <span class="section-more">共 {{ alarm_data|length }} 路 | 触发 {{ active_alarms|length }} 路</span>
+</div>
+
+<div class="alarm-grid">
+    {% for alarm in alarm_data %}
+    <div class="alarm-item {{ 'alarm-active' if alarm.triggered }}">
+        <div class="alarm-icon-wrap {{ 'alarm-icon-on' if alarm.triggered }}">
+            <i class="bi {{ alarm.icon }}"></i>
+        </div>
+        <span class="alarm-label">{{ alarm.label }}</span>
+        <span class="alarm-status-dot {{ 'dot-red' if alarm.triggered else 'dot-green' }}"></span>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="dash-footer-actions">
+    <button class="btn btn-refresh" onclick="refreshData()">
+        <i class="bi bi-arrow-clockwise"></i> 手动刷新
+    </button>
+    <small class="auto-refresh-hint" id="autoHint">⏱ 每5秒自动刷新</small>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let refreshTimer = null;
+
+function refreshData() {
+    const btn = document.querySelector('.btn-refresh');
+    btn.classList.add('spinning');
+    fetch('/dashboard/api/data')
+        .then(r => r.json())
+        .then(d => {
+            d.tags.forEach((tag, i) => {
+                const cards = document.querySelectorAll('.gauge-card-v3');
+                if (cards[i]) {
+                    const fill = cards[i].querySelector('.gauge-fill');
+                    fill.style.strokeDasharray = (tag.pct * 2.64) + ' 264';
+                    fill.className = 'gauge-fill ' + (
+                        tag.status === 'critical' ? 'fill-critical' :
+                        tag.status === 'warning' ? 'fill-warning' : 'fill-normal'
+                    );
+                    cards[i].className = 'gauge-card-v3 ' + (
+                        tag.status === 'critical' ? 'gauge-critical' :
+                        tag.status === 'warning' ? 'gauge-warning' : ''
+                    );
+                    const valEl = cards[i].querySelector('.gauge-value-v3');
+                    valEl.innerHTML = parseFloat(tag.value).toFixed(1) + '<small>' + tag.unit + '</small>';
+                    valEl.className = 'gauge-value-v3 ' + (
+                        tag.status === 'critical' ? 'text-critical' :
+                        tag.status === 'warning' ? 'text-warning' : ''
+                    );
+                }
+            });
+
+            d.alarms.forEach((alarm, i) => {
+                const items = document.querySelectorAll('.alarm-item');
+                if (items[i]) {
+                    const iconWrap = items[i].querySelector('.alarm-icon-wrap');
+                    const dot = items[i].querySelector('.alarm-status-dot');
+                    if (alarm.triggered) {
+                        items[i].classList.add('alarm-active');
+                        iconWrap.classList.add('alarm-icon-on');
+                        dot.className = 'alarm-status-dot dot-red';
+                    } else {
+                        items[i].classList.remove('alarm-active');
+                        iconWrap.classList.remove('alarm-icon-on');
+                        dot.className = 'alarm-status-dot dot-green';
+                    }
+                }
+            });
+
+            const updateEl = document.getElementById('updateTime');
+            if (updateEl && d.tags[0]) updateEl.textContent = d.tags[0].updated_at;
+
+            const chip = document.querySelector('.dash-status-chip');
+            if (d.plc_status === 'connected') {
+                chip.innerHTML = '<span class="chip-ok"><i class="bi bi-check-circle-fill"></i> PLC在线</span>';
+            } else if (d.plc_status === 'disconnected') {
+                chip.innerHTML = '<span class="chip-err"><i class="bi bi-x-circle-fill"></i> 断开连接</span>';
+            } else if (d.plc_status === 'disabled') {
+                chip.innerHTML = '<span class="chip-sim"><i class="bi bi-cpu"></i> 模拟模式</span>';
+            }
+
+            setTimeout(() => btn.classList.remove('spinning'), 600);
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    refreshTimer = setInterval(refreshData, 5000);
+});
+
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        clearInterval(refreshTimer);
+    } else {
+        refreshData();
+        refreshTimer = setInterval(refreshData, 5000);
+    }
+});
+</script>
+{% endblock %}

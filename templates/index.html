@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}首页 - 班组管理{% endblock %}
+{% block content %}
+
+<div class="home-welcome" style="background: linear-gradient(135deg, #1565c0 0%, #1976d2 40%, #42a5f5 100%);">
+    <div class="welcome-top">
+        <div class="welcome-info">
+            <div class="welcome-date">{{ today.strftime('%m月%d日') }} {{ ['周一','周二','周三','周四','周五','周六','周日'][today.weekday()] }}</div>
+            <h1>{{ greeting }}，{{ current_user.real_name }} 👋</h1>
+            <span class="welcome-role">{{ '🔧 系统管理员' if current_user.is_admin else '👷 班组成员' }}</span>
+        </div>
+        <div class="welcome-avatar">{{ current_user.real_name[0] }}</div>
+    </div>
+    <div class="welcome-weather">
+        <i class="bi bi-cloud-sun"></i> {{ today.strftime('%Y年%m月%d日') }} · 祝工作顺利
+    </div>
+</div>
+
+<div class="stats-row">
+    <a href="{{ url_for('notifications.index') }}" class="stat-card-home stat-blue">
+        <div class="stat-icon-wrap"><i class="bi bi-bell-fill"></i></div>
+        <div class="stat-info">
+            <div class="stat-num">{{ unread_count }}</div>
+            <div class="stat-desc">未读通知</div>
+        </div>
+    </a>
+    <div class="stat-card-home stat-green" onclick="showAbsentModal()">
+        <div class="stat-icon-wrap"><i class="bi bi-person-dash"></i></div>
+        <div class="stat-info">
+            <div class="stat-num">{{ today_absent }}</div>
+            <div class="stat-desc">今日缺勤</div>
+        </div>
+    </div>
+    <a href="{{ url_for('inspection.anomaly_list', status='open') }}" class="stat-card-home stat-orange">
+        <div class="stat-icon-wrap"><i class="bi bi-exclamation-diamond"></i></div>
+        <div class="stat-info">
+            <div class="stat-num">{{ open_anomalies }}</div>
+            <div class="stat-desc">待处理异常{% if urgent_anomalies > 0 %}<span class="urgent-dot"></span>{% endif %}</div>
+        </div>
+    </a>
+    <a href="{{ url_for('spare_parts.purchase_list') }}" class="stat-card-home stat-red">
+        <div class="stat-icon-wrap"><i class="bi bi-box2"></i></div>
+        <div class="stat-info">
+            <div class="stat-num">{{ low_stock_parts }}</div>
+            <div class="stat-desc">低库存预警</div>
+        </div>
+    </a>
+</div>
+
+<div class="modal fade" id="absentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-dash"></i> 今日缺勤详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="absent-count-bar">
+                    <span class="absent-big-num">{{ today_absent }}</span>
+                    <span class="absent-big-label">人在假 / 共{{ total_members }}人</span>
+                </div>
+                {% if absent_names %}
+                <div class="absent-list">
+                    {% for name in absent_names %}
+                    <div class="absent-name-item">
+                        <div class="absent-avatar-sm">{{ name[0] }}</div>
+                        <span>{{ name }}</span>
+                        <span class="absent-tag">请假中</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state" style="padding:24px">
+                    <i class="bi bi-emoji-smile"></i>
+                    <p>今天全员在岗，无人请假 🎉</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="{{ url_for('inspection.index') }}" class="card home-progress-card" style="text-decoration:none;color:inherit;display:block">
+    <div class="card-header-custom">
+        <div class="header-title-wrap">
+            <i class="bi bi-clipboard2-check"></i> 今日点检进度
+        </div>
+        <span class="progress-badge {% if inspection_rate >= 80 %}badge-done{% elif inspection_rate >= 40 %}badge-going{% else %}badge-pending{% endif %}">
+            {{ inspection_rate }}%
+        </span>
+    </div>
+    <div class="card-body-custom">
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" style="width: {{ inspection_rate }}%;">
+                <div class="progress-glow"></div>
+            </div>
+        </div>
+        <div class="progress-detail">{{ today_inspected }}/{{ inspection_items }} 项已完成 · 点击进入点检 <i class="bi bi-arrow-right"></i></div>
+    </div>
+</a>
+
+<div class="section-title-wrap">
+    <span class="section-title-text"><i class="bi bi-grid-3x3-gap-fill"></i>功能导航</span>
+</div>
+
+<div class="feature-grid-v2">
+    <a href="{{ url_for('data_search.index') }}" class="feature-card-v2">
+        <div class="fc-icon" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb);">
+            <i class="bi bi-search" style="color:#1565c0;"></i>
+        </div>
+        <div class="fc-info">
+            <div class="fc-name">数据搜集</div>
+            <div class="fc-desc">工作服·劳保·采集</div>
+        </div>
+    </a>
+    <a href="{{ url_for('motor.index') }}" class="feature-card-v2">
+        <div class="fc-icon" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9);">
+            <i class="bi bi-gear" style="color:#2e7d32;"></i>
+        </div>
+        <div class="fc-info">
+            <div class="fc-name">电机管理</div>
+            <div class="fc-desc">查询·维修·跟踪</div>
+        </div>
+    </a>
+    <a href="{{ url_for('inspection.anomaly') }}" class="feature-card-v2">
+        <div class="fc-icon" style="background: linear-gradient(135deg, #fce4ec, #f8bbd0);">
+            <i class="bi bi-exclamation-triangle" style="color:#c62828;"></i>
+        </div>
+        <div class="fc-info">
+            <div class="fc-name">异常提报</div>
+            <div class="fc-desc">发现·上报·处理</div>
+        </div>
+    </a>
+    <a href="{{ url_for('documents.index') }}" class="feature-card-v2">
+        <div class="fc-icon" style="background: linear-gradient(135deg, #fff3e0, #ffe0b2);">
+            <i class="bi bi-folder2-open" style="color:#e65100;"></i>
+        </div>
+        <div class="fc-info">
+            <div class="fc-name">资料库</div>
+            <div class="fc-desc">图纸·手册·SOP</div>
+        </div>
+    </a>
+    <a href="{{ url_for('spare_parts.index') }}" class="feature-card-v2">
+        <div class="fc-icon" style="background: linear-gradient(135deg, #f3e5f5, #e1bee7);">
+            <i class="bi bi-box-seam" style="color:#7b1fa2;"></i>
+        </div>
+        <div class="fc-info">
+            <div class="fc-name">备件管理</div>
+            <div class="fc-desc">库存·出入库·预警</div>
+        </div>
+    </a>
+    <a href="{{ url_for('dashboard.index') }}" class="feature-card-v2">
+        <div class="fc-icon" style="background: linear-gradient(135deg, #e0f2f1, #b2dfdb);">
+            <i class="bi bi-speedometer2" style="color:#00695c;"></i>
+        </div>
+        <div class="fc-info">
+            <div class="fc-name">数据看板</div>
+            <div class="fc-desc">PLC监控·分析</div>
+        </div>
+    </a>
+</div>
+
+{% if recent_activities %}
+<div class="section-title-wrap">
+    <span class="section-title-text"><i class="bi bi-activity"></i>最新动态</span>
+</div>
+<div class="notice-list" id="activityList">
+    {% set ns = namespace(count=0) %}
+    {% for item in recent_activities %}
+    {% set ns.count = ns.count + 1 %}
+    <a href="{{ item.link }}" class="notice-item {{ 'folded-item' if ns.count > 5 }}" {{ 'style=display:none' if ns.count > 5 }}>
+        <div class="notice-dot {{ 'unread' if item.dot }}"></div>
+        <div class="notice-content">
+            <div class="notice-title">{{ item.title }}</div>
+            <div class="notice-time">{{ item.desc }} · {{ item.time.strftime('%m-%d %H:%M') if item.time else '' }}</div>
+        </div>
+        <i class="bi bi-chevron-right notice-arrow"></i>
+    </a>
+    {% endfor %}
+</div>
+{% if recent_activities|length > 5 %}
+<div style="text-align:center;padding:6px 0 4px">
+    <button class="btn btn-sm btn-outline-primary" style="border-radius:20px;font-size:12px" id="toggleActivityBtn" onclick="toggleActivities()">
+        展开更多 <i class="bi bi-chevron-down"></i>
+    </button>
+</div>
+{% endif %}
+{% endif %}
+
+{% if current_user.is_admin %}
+<div class="section-title-wrap">
+    <span class="section-title-text"><i class="bi bi-download"></i>数据导出</span>
+</div>
+<div class="export-row">
+    <a href="{{ url_for('export.export_attendance') }}" class="export-chip">
+        <i class="bi bi-file-earmark-spreadsheet"></i> 考勤
+    </a>
+    <a href="{{ url_for('export.export_inspection') }}" class="export-chip">
+        <i class="bi bi-file-earmark-text"></i> 点检
+    </a>
+    <a href="{{ url_for('export.export_anomaly') }}" class="export-chip">
+        <i class="bi bi-file-earmark-excel"></i> 异常
+    </a>
+    <a href="{{ url_for('export.export_spare_parts_stock') }}" class="export-chip">
+        <i class="bi bi-file-earmark-bar-graph"></i> 库存
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showAbsentModal() {
+    const modal = new bootstrap.Modal(document.getElementById('absentModal'));
+    modal.show();
+}
+function toggleActivities() {
+    var btn = document.getElementById('toggleActivityBtn');
+    var items = document.querySelectorAll('#activityList .folded-item');
+    var isHidden = items.length > 0 && items[0].style.display === 'none';
+    items.forEach(function(el) { el.style.display = isHidden ? '' : 'none'; });
+    btn.innerHTML = isHidden ? '收起 <i class="bi bi-chevron-up"></i>' : '展开更多 <i class="bi bi-chevron-down"></i>';
+}
+</script>
+{% endblock %}

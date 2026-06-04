@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}后台管理 - 班组管理{% endblock %}
+{% block content %}
+<div class="section-title"><i class="bi bi-shield-lock"></i>后台管理</div>
+<div class="feature-grid">
+    <a href="{{ url_for('admin.users') }}" class="feature-item">
+        <div class="feature-icon" style="background:#e8eaf6;color:#283593"><i class="bi bi-people-fill"></i></div>
+        <span>成员管理</span>
+    </a>
+    <a href="{{ url_for('documents.manage_categories') }}" class="feature-item">
+        <div class="feature-icon" style="background:#e3f2fd;color:#1565c0"><i class="bi bi-folder-symlink"></i></div>
+        <span>资料分类</span>
+    </a>
+    <a href="{{ url_for('inspection.manage_items') }}" class="feature-item">
+        <div class="feature-icon" style="background:#e8f5e9;color:#2e7d32"><i class="bi bi-list-check"></i></div>
+        <span>点检项目</span>
+    </a>
+    <a href="{{ url_for('notifications.send') }}" class="feature-item">
+        <div class="feature-icon" style="background:#f3e5f5;color:#7b1fa2"><i class="bi bi-send"></i></div>
+        <span>发送通知</span>
+    </a>
+</div>
+
+<div class="section-title"><i class="bi bi-download"></i>数据导出</div>
+<div class="quick-actions">
+    <a href="{{ url_for('export.export_attendance') }}" class="quick-action-btn"><i class="bi bi-calendar"></i>考勤记录</a>
+    <a href="{{ url_for('export.export_inspection') }}" class="quick-action-btn"><i class="bi bi-clipboard"></i>点检记录</a>
+    <a href="{{ url_for('export.export_anomaly') }}" class="quick-action-btn"><i class="bi bi-exclamation-triangle"></i>异常报告</a>
+    <a href="{{ url_for('export.export_spare_parts_stock') }}" class="quick-action-btn"><i class="bi bi-box"></i>备件库存</a>
+    <a href="{{ url_for('export.export_spare_parts_transactions') }}" class="quick-action-btn"><i class="bi bi-arrow-left-right"></i>出入记录</a>
+</div>
+
+<div class="card mt-3">
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-6">
+                <div class="stat-value">{{ user_count }}</div>
+                <div class="stat-label">总成员数</div>
+            </div>
+            <div class="col-6">
+                <div class="stat-value" style="color:var(--success)">{{ active_count }}</div>
+                <div class="stat-label">活跃成员</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">系统信息</div>
+    <div class="card-body small">
+        <div>数据库: SQLite (本地存储)</div>
+        <div>服务器: Flask</div>
+        <div>数据存储位置: e:\team\instance\team.db</div>
+        <div>文件存储位置: e:\team\static\uploads\</div>
+        <div class="mt-2"><strong>温馨提示:</strong> 请定期备份 instance 和 static/uploads 文件夹</div>
+    </div>
+</div>
+{% endblock %}

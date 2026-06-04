@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}{% if record %}编辑{% else %}新建{% endif %}维修申请 - 电机管理{% endblock %}
+{% block extra_css %}
+<style>
+.rf-header {
+    margin: -12px -12px 14px -12px;
+    padding: 14px 14px 10px;
+    background: linear-gradient(135deg, #e65100 0%, #f57c00 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.rf-header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
+.rf-header h1 { font-size: 18px; font-weight: 700; margin: 4px 0 0; }
+.rf-card {
+    background: var(--card-bg); border-radius: 14px; padding: 18px 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05); margin-bottom: 12px;
+}
+.rf-section-title {
+    font-size: 14px; font-weight: 600; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+    color: var(--primary); padding-bottom: 6px; border-bottom: 1px solid #f0f0f0;
+}
+.rf-section-title i { font-size: 16px; }
+.rf-row-3 { display: flex; gap: 8px; }
+.rf-row-3 .form-group { flex: 1; min-width: 0; }
+.rf-row-3 .form-group.wide { flex: 2; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="rf-header">
+    <a href="{{ url_for('motor.repair_list') }}"><i class="bi bi-arrow-left"></i> 返回列表</a>
+    <h1><i class="bi bi-tools"></i> {% if record %}编辑{% else %}新建{% endif %}维修申请</h1>
+</div>
+
+<form method="POST">
+<div class="rf-card">
+    <div class="rf-section-title"><i class="bi bi-info-circle"></i> 基本信息</div>
+    <div class="rf-row-3 mb-2">
+        <div class="form-group wide">
+            <label class="form-label">委外维修件名称 *</label>
+            <input type="text" name="repair_name" class="form-control" value="{{ record.repair_name if record else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">使用部位</label>
+            <input type="text" name="use_location" class="form-control" value="{{ record.use_location if record else '' }}">
+        </div>
+    </div>
+    <div class="rf-row-3 mb-2">
+        <div class="form-group">
+            <label class="form-label">极数</label>
+            <input type="text" name="pole_count" class="form-control" value="{{ record.pole_count if record else '' }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">功率(kW)</label>
+            <input type="text" name="power_spec" class="form-control" value="{{ record.power_spec if record else '' }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">型号规格</label>
+            <input type="text" name="model_spec" class="form-control" value="{{ record.model_spec if record else '' }}">
+        </div>
+    </div>
+    <div class="mb-2">
+        <label class="form-label">故障现象及原因描述</label>
+        <textarea name="fault_desc" class="form-control" rows="3">{{ record.fault_desc if record else '' }}</textarea>
+    </div>
+</div>
+
+<div class="rf-card">
+    <div class="rf-section-title"><i class="bi bi-cash"></i> 费用信息</div>
+    <div class="rf-row-3 mb-2">
+        <div class="form-group">
+            <label class="form-label">SAP估价</label>
+            <input type="text" name="sap_price" class="form-control" value="{{ record.sap_price if record else '' }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">维修报价</label>
+            <input type="text" name="repair_quote" class="form-control" value="{{ record.repair_quote if record else '' }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">委外单位</label>
+            <input type="text" name="vendor" class="form-control" value="{{ record.vendor if record else '' }}">
+        </div>
+    </div>
+</div>
+
+<div class="rf-card">
+    <div class="rf-section-title"><i class="bi bi-upc-scan"></i> 单据编号</div>
+    <div class="rf-row-3 mb-2">
+        <div class="form-group"><label class="form-label">送修单号</label><input type="text" name="repair_number" class="form-control" value="{{ record.repair_number if record else '' }}"></div>
+        <div class="form-group"><label class="form-label">A+通知单号</label><input type="text" name="aplus_notice" class="form-control" value="{{ record.aplus_notice if record else '' }}"></div>
+        <div class="form-group"><label class="form-label">A+预算单号</label><input type="text" name="aplus_budget" class="form-control" value="{{ record.aplus_budget if record else '' }}"></div>
+    </div>
+    <div class="rf-row-3">
+        <div class="form-group"><label class="form-label">成本中心</label><input type="text" name="cost_center" class="form-control" value="{{ record.cost_center if record else '' }}"></div>
+        <div class="form-group"><label class="form-label">OPEX号</label><input type="text" name="opex_no" class="form-control" value="{{ record.opex_no if record else '' }}"></div>
+        <div class="form-group"><label class="form-label">OPEX行号</label><input type="text" name="opex_line" class="form-control" value="{{ record.opex_line if record else '' }}"></div>
+    </div>
+</div>
+
+<button type="submit" class="btn btn-primary w-100" style="border-radius:12px;padding:12px;font-size:16px;font-weight:600;margin-bottom:12px">
+    <i class="bi bi-save"></i> {% if record %}更新{% else %}提交{% endif %}维修申请
+</button>
+</form>
+{% endblock %}

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}{{ form.title }} - 数据搜集{% endblock %}
+{% block extra_css %}
+<style>
+.fill-header {
+    margin: -12px -12px 14px -12px;
+    padding: 16px 16px 12px;
+    background: linear-gradient(135deg, #1565c0 0%, #1e88e5 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.fill-header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
+.fill-header h1 { font-size: 18px; font-weight: 700; margin: 6px 0 0; }
+.fill-header p { font-size: 12px; opacity: 0.8; margin: 2px 0 0; }
+.fill-form-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 18px 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    margin-bottom: 12px;
+}
+.fill-field-group { margin-bottom: 14px; }
+.fill-field-group:last-child { margin-bottom: 0; }
+.fill-field-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+}
+.fill-field-label .required-dot { color: var(--danger); }
+.fill-field-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    background: #fafafa;
+    transition: border-color 0.2s;
+    outline: none;
+}
+.fill-field-input:focus { border-color: var(--primary); background: #fff; }
+.fill-field-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    background: #fafafa;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    font-family: inherit;
+}
+.fill-field-textarea:focus { border-color: var(--primary); background: #fff; }
+.fill-field-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    background: #fafafa;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+.fill-field-select:focus { border-color: var(--primary); background: #fff; }
+.fill-checkbox-list { display: flex; flex-direction: column; gap: 8px; }
+.fill-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: #fafafa;
+    transition: all 0.15s;
+}
+.fill-checkbox-item:has(input:checked) {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+.fill-checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    flex-shrink: 0;
+}
+.fill-radio-list { display: flex; flex-direction: column; gap: 8px; }
+.fill-radio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: #fafafa;
+    transition: all 0.15s;
+}
+.fill-radio-item:has(input:checked) {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+.fill-radio-item input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    flex-shrink: 0;
+}
+.fill-file-upload {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.fill-file-btn {
+    padding: 10px 18px;
+    border-radius: 20px;
+    border: 1.5px dashed var(--border);
+    background: #fafafa;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--primary);
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.fill-file-btn:hover { border-color: var(--primary); background: var(--primary-light); }
+.fill-file-name { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fill-submit-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 4px;
+}
+.fill-submit-btn:hover { background: #1557b0; }
+.fill-submit-btn:active { transform: scale(0.98); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="fill-header">
+    <a href="{{ url_for('data_search.index') }}"><i class="bi bi-arrow-left"></i> 返回</a>
+    <h1><i class="bi {{ form.icon or 'bi-clipboard' }}"></i> {{ form.title }}</h1>
+    {% if form.description %}<p>{{ form.description }}</p>{% endif %}
+</div>
+
+<form method="POST" action="{{ url_for('data_search.submit_form', form_id=form.id) }}" enctype="multipart/form-data">
+    <div class="fill-form-card">
+        {% for field in fields %}
+        <div class="fill-field-group">
+            <label class="fill-field-label">
+                {{ field.label }}
+                {% if field.required %}<span class="required-dot">*</span>{% endif %}
+            </label>
+
+            {% if field.field_type == 'text' %}
+                <input type="text" name="field_{{ field.id }}" class="fill-field-input" placeholder="{{ field.placeholder or '' }}" {{ 'required' if field.required }}>
+
+            {% elif field.field_type == 'number' %}
+                <input type="number" name="field_{{ field.id }}" class="fill-field-input" placeholder="{{ field.placeholder or '' }}" {{ 'required' if field.required }}>
+
+            {% elif field.field_type == 'textarea' %}
+                <textarea name="field_{{ field.id }}" class="fill-field-textarea" placeholder="{{ field.placeholder or '' }}" {{ 'required' if field.required }}></textarea>
+
+            {% elif field.field_type == 'select' %}
+                <select name="field_{{ field.id }}" class="fill-field-select" {{ 'required' if field.required }}>
+                    <option value="">{{ field.placeholder or '请选择...' }}</option>
+                    {% for opt in field.get_options() %}
+                    <option value="{{ opt }}">{{ opt }}</option>
+                    {% endfor %}
+                </select>
+
+            {% elif field.field_type == 'radio' %}
+                <div class="fill-radio-list">
+                    {% for opt in field.get_options() %}
+                    <label class="fill-radio-item">
+                        <input type="radio" name="field_{{ field.id }}" value="{{ opt }}" {{ 'required' if field.required and loop.first }}>
+                        {{ opt }}
+                    </label>
+                    {% endfor %}
+                </div>
+
+            {% elif field.field_type == 'checkbox' %}
+                <div class="fill-checkbox-list">
+                    {% for opt in field.get_options() %}
+                    <label class="fill-checkbox-item">
+                        <input type="checkbox" name="field_{{ field.id }}" value="{{ opt }}">
+                        {{ opt }}
+                    </label>
+                    {% endfor %}
+                </div>
+
+            {% elif field.field_type == 'date' %}
+                <input type="date" name="field_{{ field.id }}" class="fill-field-input" {{ 'required' if field.required }}>
+
+            {% elif field.field_type == 'file' %}
+                <div class="fill-file-upload">
+                    <button type="button" class="fill-file-btn" onclick="document.getElementById('fileInput_{{ field.id }}').click()">
+                        <i class="bi bi-upload"></i> 选择文件
+                    </button>
+                    <span class="fill-file-name" id="fileName_{{ field.id }}">未选择文件</span>
+                    <input type="file" name="field_{{ field.id }}" id="fileInput_{{ field.id }}" style="display:none" onchange="updateFileName({{ field.id }})" {{ 'required' if field.required }}>
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <button type="submit" class="fill-submit-btn"><i class="bi bi-send"></i> 提交</button>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateFileName(fieldId) {
+    var input = document.getElementById('fileInput_' + fieldId);
+    var label = document.getElementById('fileName_' + fieldId);
+    if (input.files.length > 0) {
+        var name = input.files[0].name;
+        if (name.length > 25) name = name.substring(0, 22) + '...';
+        label.textContent = name;
+    } else {
+        label.textContent = '未选择文件';
+    }
+}
+</script>
+{% endblock %}
