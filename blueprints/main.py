@@ -12,6 +12,7 @@ def index():
     today = date.today()
     unread_count = Notification.query.filter_by(is_read=False).count()
     greeting = _get_greeting()
+    warm_message = _get_warm_message()
 
     total_members = User.query.filter_by(is_active=True).count()
 
@@ -55,6 +56,7 @@ def index():
     return render_template('index.html',
                            unread_count=unread_count,
                            greeting=greeting,
+                           warm_message=warm_message,
                            total_members=total_members,
                            today_absent=today_absent,
                            absent_names=absent_names,
@@ -104,6 +106,40 @@ def _get_greeting():
         return '下午好'
     else:
         return '晚上好'
+
+
+def _get_warm_message():
+    today = date.today()
+    weekday = today.weekday()
+    
+    warm_messages = [
+        "周一好！新的一周开始了，加油！💪",
+        "周二继续努力，保持好状态！✨",
+        "周三啦，一周过半，坚持就是胜利！💯",
+        "周四快乐！明天就是周五啦~ 🎉",
+        "周五到了！周末就在眼前，开心！🌈",
+        "周六愉快！好好放松一下吧~ 🛝",
+        "周日休息，为下周充充电！🔋",
+    ]
+    
+    holiday_messages = {
+        '01-01': '🎉 新年快乐！愿新的一年万事如意！',
+        '02-14': '💝 情人节快乐！',
+        '03-08': '👩 妇女节快乐！',
+        '05-01': '🎉 劳动节快乐！',
+        '06-01': '👶 儿童节快乐！',
+        '07-01': '🇨🇳 建党节快乐！',
+        '08-01': '🎖️ 建军节快乐！',
+        '09-10': '👨‍🏫 教师节快乐！',
+        '10-01': '🇨🇳 国庆节快乐！',
+        '12-25': '🎄 圣诞节快乐！',
+    }
+    
+    date_str = today.strftime('%m-%d')
+    if date_str in holiday_messages:
+        return holiday_messages[date_str]
+    
+    return warm_messages[weekday]
 
 
 def _build_activity_feed(limit=10):

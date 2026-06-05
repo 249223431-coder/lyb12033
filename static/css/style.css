@@ -572,31 +572,43 @@ body {
 /* ========== 首页全新设计 ========== */
 
 .home-welcome {
-    margin: -12px -12px 16px -12px;
-    padding: 22px 18px 14px;
+    margin: -12px -12px 14px -12px;
+    padding: 20px 16px 16px;
     color: #fff;
     position: relative;
     overflow: hidden;
 }
-.home-welcome::before {
-    content: '';
+.welcome-bg-decoration {
     position: absolute;
-    top: -60px;
-    right: -40px;
-    width: 160px;
-    height: 160px;
-    background: rgba(255,255,255,0.06);
+    top: -80px;
+    right: -50px;
+    width: 180px;
+    height: 180px;
+    background: rgba(255,255,255,0.08);
     border-radius: 50%;
+    filter: blur(12px);
 }
-.home-welcome::after {
+.welcome-bg-decoration::before {
     content: '';
     position: absolute;
-    bottom: -40px;
-    left: 60%;
-    width: 100px;
-    height: 100px;
+    top: 80px;
+    left: -60px;
+    width: 120px;
+    height: 120px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50%;
+    filter: blur(8px);
+}
+.welcome-bg-decoration::after {
+    content: '';
+    position: absolute;
+    bottom: -30px;
+    left: 40%;
+    width: 80px;
+    height: 80px;
     background: rgba(255,255,255,0.04);
     border-radius: 50%;
+    filter: blur(6px);
 }
 .welcome-top {
     display: flex;
@@ -607,49 +619,56 @@ body {
 }
 .welcome-info { flex: 1; }
 .welcome-date {
-    font-size: 13px;
+    font-size: 12px;
     opacity: 0.85;
     margin-bottom: 4px;
+    font-weight: 500;
 }
 .welcome-info h1 {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     margin: 0 0 8px 0;
     letter-spacing: 1px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 .welcome-role {
     display: inline-block;
     background: rgba(255,255,255,0.2);
-    backdrop-filter: blur(4px);
-    padding: 2px 12px;
-    border-radius: 20px;
+    backdrop-filter: blur(6px);
+    padding: 3px 12px;
+    border-radius: 16px;
     font-size: 11px;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    margin-bottom: 10px;
+}
+.welcome-warm {
+    font-size: 12px;
+    opacity: 0.88;
+    margin: 0;
+    line-height: 1.5;
+    font-weight: 400;
 }
 .welcome-avatar {
-    width: 52px;
-    height: 52px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background: rgba(255,255,255,0.25);
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
-    font-weight: 700;
-    border: 2px solid rgba(255,255,255,0.4);
+    font-size: 20px;
+    font-weight: 600;
+    border: 2px solid rgba(255,255,255,0.35);
     flex-shrink: 0;
     position: relative;
     z-index: 1;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.12);
 }
-.welcome-weather {
-    margin-top: 14px;
-    font-size: 12px;
-    opacity: 0.75;
-    position: relative;
-    z-index: 1;
+.welcome-avatar:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
 }
-.welcome-weather i { margin-right: 4px; }
 
 .stats-row {
     display: grid;

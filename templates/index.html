@@ -2,17 +2,16 @@
 {% block title %}首页 - 班组管理{% endblock %}
 {% block content %}
 
-<div class="home-welcome" style="background: linear-gradient(135deg, #1565c0 0%, #1976d2 40%, #42a5f5 100%);">
+<div class="home-welcome" style="background: linear-gradient(135deg, #1e88e5 0%, #42a5f5 30%, #64b5f6 100%); position:relative; overflow:hidden;">
+    <div class="welcome-bg-decoration"></div>
     <div class="welcome-top">
         <div class="welcome-info">
-            <div class="welcome-date">{{ today.strftime('%m月%d日') }} {{ ['周一','周二','周三','周四','周五','周六','周日'][today.weekday()] }}</div>
-            <h1>{{ greeting }}，{{ current_user.real_name }} 👋</h1>
+            <div class="welcome-date">{{ today.strftime('%Y年%m月%d日') }} {{ ['周一','周二','周三','周四','周五','周六','周日'][today.weekday()] }}</div>
+            <h1>{{ greeting }}，{{ current_user.real_name }} 🌟</h1>
             <span class="welcome-role">{{ '🔧 系统管理员' if current_user.is_admin else '👷 班组成员' }}</span>
+            <p class="welcome-warm">{{ warm_message }}</p>
         </div>
         <div class="welcome-avatar">{{ current_user.real_name[0] }}</div>
-    </div>
-    <div class="welcome-weather">
-        <i class="bi bi-cloud-sun"></i> {{ today.strftime('%Y年%m月%d日') }} · 祝工作顺利
     </div>
 </div>
 

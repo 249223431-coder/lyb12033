@@ -35,8 +35,8 @@
                 <button class="btn btn-sm btn-outline-secondary" style="border-radius:20px" data-bs-toggle="modal" data-bs-target="#editUser{{ u.id }}"><i class="bi bi-pencil"></i></button>
                 <button class="btn btn-sm btn-outline-warning" style="border-radius:20px" data-bs-toggle="modal" data-bs-target="#resetPwd{{ u.id }}"><i class="bi bi-key"></i></button>
                 {% if u.username != 'admin' %}
-                <form method="POST" action="{{ url_for('admin.toggle_user', user_id=u.id) }}">
-                    <button class="btn btn-sm {{ 'btn-outline-success' if not u.is_active else 'btn-outline-danger' }}" style="border-radius:20px">{{ '启用' if not u.is_active else '禁用' }}</button>
+                <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" onsubmit="return confirm('确定要删除该用户吗？')">
+                    <button class="btn btn-sm btn-danger" style="border-radius:20px"><i class="bi bi-trash"></i></button>
                 </form>
                 {% endif %}
             </div>

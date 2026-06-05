@@ -49,17 +49,17 @@ def add_user():
     return redirect(url_for('admin.users'))
 
 
-@admin_bp.route('/users/toggle/<int:user_id>', methods=['POST'])
+@admin_bp.route('/users/delete/<int:user_id>', methods=['POST'])
 @login_required
 @admin_required
-def toggle_user(user_id):
+def delete_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.username == 'admin':
-        flash('不能禁用超级管理员', 'error')
+        flash('不能删除超级管理员', 'error')
     else:
-        user.is_active = not user.is_active
+        db.session.delete(user)
         db.session.commit()
-        flash(f'用户已{"启用" if user.is_active else "禁用"}', 'success')
+        flash('用户已删除', 'success')
     return redirect(url_for('admin.users'))
 
 

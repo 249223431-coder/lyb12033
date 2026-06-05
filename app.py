@@ -62,6 +62,7 @@ def create_app():
 
 def _auto_backup():
     """每天首次启动时自动备份数据库"""
+    import os
     import time
     import shutil
     today = time.strftime('%Y%m%d')
