@@ -89,6 +89,14 @@
                     </div>
                     <div class="modal-body">
                         <div class="more-menu-grid">
+                            <a href="{{ url_for('overtime.index') }}" class="more-menu-item">
+                                <div class="more-menu-icon" style="background:#fff3e0;color:#ef6c00"><i class="bi bi-clock-history"></i></div>
+                                <span>加班预提报</span>
+                            </a>
+                            <a href="{{ url_for('shutdown.index') }}" class="more-menu-item">
+                                <div class="more-menu-icon" style="background:#ede7f6;color:#4527a0"><i class="bi bi-tools"></i></div>
+                                <span>停机计划</span>
+                            </a>
                             <a href="{{ url_for('data_search.index') }}" class="more-menu-item">
                                 <div class="more-menu-icon" style="background:#e3f2fd;color:#1565c0"><i class="bi bi-search"></i></div>
                                 <span>数据搜集</span>

@@ -32,6 +32,8 @@ def create_app():
     from blueprints.export import export_bp
     from blueprints.data_search import data_search_bp
     from blueprints.motor import motor_bp
+    from blueprints.overtime import overtime_bp
+    from blueprints.shutdown import shutdown_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(attendance_bp, url_prefix='/attendance')
@@ -44,6 +46,8 @@ def create_app():
     app.register_blueprint(export_bp, url_prefix='/export')
     app.register_blueprint(data_search_bp, url_prefix='/data_search')
     app.register_blueprint(motor_bp, url_prefix='/motor')
+    app.register_blueprint(overtime_bp, url_prefix='/overtime')
+    app.register_blueprint(shutdown_bp, url_prefix='/shutdown')
 
     from blueprints.main import main_bp
     app.register_blueprint(main_bp)
@@ -51,8 +55,24 @@ def create_app():
     with app.app_context():
         db.create_all()
         _init_default_data()
+        _auto_backup()
 
     return app
+
+
+def _auto_backup():
+    """每天首次启动时自动备份数据库"""
+    import time
+    import shutil
+    today = time.strftime('%Y%m%d')
+    src = os.path.join(os.path.dirname(__file__), 'instance', 'team.db')
+    if os.path.exists(src):
+        backup_dir = r'D:\team_backups'
+        os.makedirs(backup_dir, exist_ok=True)
+        dst = os.path.join(backup_dir, f'team_auto_{today}.db')
+        if not os.path.exists(dst):
+            shutil.copy2(src, dst)
+            print(f' * [自动备份] 数据库已备份到 {dst}')
 
 
 def _init_default_data():

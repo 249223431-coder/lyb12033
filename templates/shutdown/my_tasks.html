@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}我的停机任务 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.task-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+}
+.task-item.completed { border-color: #c8e6c9; background: #f1f8e9; }
+.task-item .project-name { font-weight: 500; font-size: 14px; }
+.task-item .meta { font-size: 12px; color: var(--text-secondary); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+    <div class="section-title"><i class="bi bi-person-check"></i>我的停机任务</div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('shutdown.index') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-tools"></i> 计划总览
+        </a>
+        <a href="{{ url_for('shutdown.search') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-search"></i> 历史搜索
+        </a>
+    </div>
+</div>
+
+{% if plan and my_items %}
+<div class="card mb-3">
+    <div class="card-body small">
+        <strong>{{ plan.plan_date.strftime('%Y-%m-%d') if plan.plan_date else '' }}</strong>
+        停机时间：{{ plan.start_time }}-{{ plan.end_time }}
+        · 共 {{ my_items|length }} 项任务
+    </div>
+</div>
+
+{% for entry in my_items %}
+{% set item = entry.item %}
+<div class="task-item {{ 'completed' if item.completed }}">
+    <div class="d-flex justify-content-between align-items-start">
+        <div class="flex-grow-1">
+            <div class="project-name">
+                <span class="badge me-1" style="background:{{ '#1565c0' if entry.role=='负责人' else '#ef6c00' }};color:white">{{ entry.role }}</span>
+                {{ item.seq }}. {{ item.project_name or '(未命名项目)' }}
+            </div>
+            <div class="meta mt-1">
+                ⚠ 安全注意：{{ item.safety_notes or '无' }}
+            </div>
+            <div class="meta">👥 成员：{{ item.members or '-' }}</div>
+            {% if item.completed %}
+            <div class="mt-2 small text-success">
+                ✅ 已完成
+                {% if item.complete_note %} · {{ item.complete_note }}{% endif %}
+                {% if item.confirmed_at %} · {{ item.confirmed_at.strftime('%H:%M') if item.confirmed_at else '' }}{% endif %}
+            </div>
+            <form method="POST" action="{{ url_for('shutdown.cancel_confirm', item_id=item.id) }}" class="mt-1">
+                <button class="btn btn-sm btn-link text-muted small" onclick="return confirm('撤销确认？')">撤销确认</button>
+            </form>
+            {% endif %}
+        </div>
+        {% if not item.completed %}
+        <div class="text-end" style="flex-shrink:0">
+            <button class="btn btn-success btn-sm" onclick="showConfirm({{ item.id }}, '{{ item.project_name or '(未命名)'|e }}')">✓ 确认完成</button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-check-circle" style="font-size:48px"></i>
+        <p class="mt-3">暂无您的停机任务</p>
+        <p class="small">当管理员加载停机计划并推送任务后，您负责的项目将显示在此处</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+function showConfirm(itemId, projectName) {
+    const note = prompt('确认完成 "' + projectName + '"？\n\n请输入完成备注（可选）：');
+    if (note !== null) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("shutdown.confirm", item_id=999999) }}'.replace('999999', itemId);
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'complete_note';
+        input.value = note;
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

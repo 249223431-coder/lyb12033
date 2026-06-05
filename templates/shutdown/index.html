@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}停机计划总览 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.responsible-group {
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f5f7fa;
+    cursor: pointer;
+    gap: 8px;
+}
+.group-toggle:hover { background: #eef1f5; }
+.group-toggle .name { font-weight: 600; font-size: 14px; }
+.group-items { padding: 0 14px; }
+.item-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+    font-size: 13px;
+}
+.item-row:last-child { border-bottom: none; }
+.item-row .seq { width: 28px; color: var(--text-secondary); text-align: center; flex-shrink: 0; }
+.item-row .project { flex: 1; min-width: 0; }
+.item-row .safety { color: #c62828; font-size: 11px; }
+.completed-badge { color: #2e7d32; }
+.pending-badge { color: #e65100; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+    <div class="section-title"><i class="bi bi-tools"></i>停机计划总览</div>
+    <div class="d-flex gap-2">
+        {% if current_user.is_admin %}
+        <button class="btn btn-sm btn-primary" onclick="document.getElementById('loadForm').classList.toggle('d-none')">
+            <i class="bi bi-upload"></i> 加载计划
+        </button>
+        {% endif %}
+        <a href="{{ url_for('shutdown.my_tasks') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-person-check"></i> 我的任务
+        </a>
+        <a href="{{ url_for('shutdown.search') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-search"></i> 历史搜索
+        </a>
+    </div>
+</div>
+
+{% if current_user.is_admin %}
+<div class="card mb-3 d-none" id="loadForm">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('shutdown.load') }}">
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label small">计划停机日期 <span class="text-danger">*</span></label>
+                    <input type="date" name="plan_date" class="form-control" required>
+                </div>
+                <div class="col-3">
+                    <label class="form-label small">开始时间</label>
+                    <input type="time" name="start_time" class="form-control" value="08:00">
+                </div>
+                <div class="col-3">
+                    <label class="form-label small">结束时间</label>
+                    <input type="time" name="end_time" class="form-control" value="18:00">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">从Excel加载最新停机计划</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% if plan %}
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="fw-500">{{ plan.sheet_name }}</span>
+                <span class="small text-muted ms-2" id="planInfoDisplay">{{ plan.plan_date.strftime('%Y-%m-%d') if plan.plan_date else '' }} {{ plan.start_time }}-{{ plan.end_time }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <div class="small">
+                    共 {{ total }} 条 · 已完成 {{ completed }} 条
+                </div>
+                {% if current_user.is_admin %}
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleEdit()">
+                    <i class="bi bi-pencil"></i> 修改
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% if current_user.is_admin %}
+        <div class="mt-2 pt-2 border-top d-none" id="editForm">
+            <form method="POST" action="{{ url_for('shutdown.edit') }}" class="d-flex gap-2 align-items-end flex-wrap">
+                <div>
+                    <label class="form-label small mb-1">日期</label>
+                    <input type="date" name="plan_date" class="form-control form-control-sm" value="{{ plan.plan_date.strftime('%Y-%m-%d') if plan.plan_date else '' }}" style="width:140px">
+                </div>
+                <div>
+                    <label class="form-label small mb-1">开始</label>
+                    <input type="time" name="start_time" class="form-control form-control-sm" value="{{ plan.start_time }}" style="width:100px">
+                </div>
+                <div>
+                    <label class="form-label small mb-1">结束</label>
+                    <input type="time" name="end_time" class="form-control form-control-sm" value="{{ plan.end_time }}" style="width:100px">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">保存</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% for resp_name, items in grouped.items() %}
+<div class="responsible-group">
+    <div class="group-toggle" onclick="this.nextElementSibling.classList.toggle('d-none')">
+        <span class="name">📋 {{ resp_name }}</span>
+        <span class="small text-muted">{{ items|length }}项 · 完成 {{ items|selectattr('completed')|list|length }}/{{ items|length }}</span>
+    </div>
+    <div class="group-items">
+        {% for item in items %}
+        <div class="item-row">
+            <span class="seq">{{ item.seq }}</span>
+            <div class="project">
+                <span>{{ item.project_name or '(未命名)' }}</span>
+                {% if item.safety_notes %}<span class="safety"> ⚠{{ item.safety_notes }}</span>{% endif %}
+                <div class="small text-muted">成员：{{ item.members or '-' }}</div>
+            </div>
+            <div class="text-end" style="flex-shrink:0">
+                {% if item.completed %}
+                <span class="completed-badge small">✅ 已完成</span>
+                <form method="POST" action="{{ url_for('shutdown.cancel_confirm', item_id=item.id) }}" class="d-inline" onsubmit="return confirm('撤销确认？')">
+                    <button class="btn btn-sm btn-link text-muted small">撤销</button>
+                </form>
+                {% else %}
+                <span class="pending-badge small">⏳ 待完成</span>
+                <button class="btn btn-sm btn-outline-success"
+                        onclick="showConfirm({{ item.id }}, '{{ item.project_name or '(未命名)'|e }}')">确认</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+
+{% if current_user.is_admin and plan %}
+<div class="d-flex gap-2 mt-3">
+    <form method="POST" action="{{ url_for('shutdown.push') }}" onsubmit="return confirm('确定向所有相关成员推送任务通知？')">
+        <button class="btn btn-warning" style="color:#333"><i class="bi bi-send"></i> 推送任务通知</button>
+    </form>
+    <a href="{{ url_for('shutdown.summary') }}" class="btn btn-outline-primary"><i class="bi bi-list-check"></i> 完成情况汇总</a>
+    <a href="{{ url_for('shutdown.export') }}" class="btn btn-success" onclick="return confirm('确定导出完成情况到Excel？')"><i class="bi bi-download"></i> 导出Excel</a>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-tools" style="font-size:48px"></i>
+        <p class="mt-3">暂无停机计划</p>
+        <p class="small">管理员点击"加载计划"从Excel导入最新停机检修计划</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+function toggleEdit() {
+    document.getElementById('editForm').classList.toggle('d-none');
+}
+
+function showConfirm(itemId, projectName) {
+    const note = prompt('确认完成 "' + projectName + '"？\n\n请输入完成备注（可选）：');
+    if (note !== null) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("shutdown.confirm", item_id=999999) }}'.replace('999999', itemId);
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'complete_note';
+        input.value = note;
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

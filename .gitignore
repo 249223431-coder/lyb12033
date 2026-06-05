@@ -33,3 +33,6 @@ Thumbs.db
 
 # 模型文件
 models/
+
+# 停机计划数据文件
+停机计划.xlsx

@@ -513,6 +513,74 @@ class CollectionValue(db.Model):
         }
 
 
+
+
+
+class ShutdownPlan(db.Model):
+    __tablename__ = 'shutdown_plans'
+    id = db.Column(db.Integer, primary_key=True)
+    sheet_name = db.Column(db.String(50), nullable=False)
+    plan_date = db.Column(db.Date, nullable=False, index=True)
+    start_time = db.Column(db.String(10), default='')
+    end_time = db.Column(db.String(10), default='')
+    department = db.Column(db.String(200), default='')
+    status = db.Column(db.String(20), default='loaded')  # loaded / notified / completed
+    created_at = db.Column(db.DateTime, default=china_now)
+
+    items = db.relationship('ShutdownPlanItem', backref='plan', lazy='dynamic',
+                            order_by='ShutdownPlanItem.seq')
+
+
+class ShutdownPlanItem(db.Model):
+    __tablename__ = 'shutdown_plan_items'
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('shutdown_plans.id'), nullable=False)
+    seq = db.Column(db.Integer, default=0)
+    project_name = db.Column(db.Text, default='')
+    category = db.Column(db.String(20), default='')
+    responsible = db.Column(db.String(100), default='')
+    responsible_user_id = db.Column(db.Integer, nullable=True)
+    members = db.Column(db.String(200), default='')
+    safety_notes = db.Column(db.Text, default='')
+    completed = db.Column(db.Boolean, default=False)
+    complete_note = db.Column(db.Text, default='')
+    confirmed_by = db.Column(db.Integer, nullable=True)
+    confirmed_at = db.Column(db.DateTime, nullable=True)
+
+
+class OvertimePreReport(db.Model):
+    __tablename__ = 'overtime_pre_reports'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    holiday_date = db.Column(db.Date, nullable=False, index=True)
+    holiday_type = db.Column(db.String(20), nullable=False)  # weekend / holiday
+    holiday_name = db.Column(db.String(100), default='')
+    start_time = db.Column(db.String(10), default='')
+    end_time = db.Column(db.String(10), default='')
+    hours = db.Column(db.Float, default=0)
+    reason = db.Column(db.Text, default='')
+    status = db.Column(db.String(20), default='submitted')  # submitted / cancelled / exported
+    created_at = db.Column(db.DateTime, default=china_now)
+    updated_at = db.Column(db.DateTime, default=china_now, onupdate=china_now)
+
+    user = db.relationship('User', backref='overtime_pre_reports')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_name': self.user.real_name if self.user else '',
+            'holiday_date': self.holiday_date.strftime('%Y-%m-%d') if self.holiday_date else '',
+            'holiday_type': self.holiday_type,
+            'holiday_name': self.holiday_name,
+            'start_time': self.start_time,
+            'end_time': self.end_time,
+            'hours': self.hours,
+            'reason': self.reason,
+            'status': self.status,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else '',
+        }
+
+
 class PurchaseRequisition(db.Model):
     __tablename__ = 'purchase_requisitions'
     id = db.Column(db.Integer, primary_key=True)

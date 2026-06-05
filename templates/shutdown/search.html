@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}历史搜索 - 停机计划 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.search-result {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+.search-result .date-badge {
+    background: var(--primary);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.search-result .project-name { font-weight: 500; font-size: 14px; }
+.search-result .meta { font-size: 12px; color: var(--text-secondary); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+    <div class="section-title"><i class="bi bi-search"></i>停机计划历史搜索</div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('shutdown.index') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-tools"></i> 计划总览
+        </a>
+        <a href="{{ url_for('shutdown.my_tasks') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-person-check"></i> 我的任务
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('shutdown.search') }}">
+            <div class="input-group mb-2">
+                <input type="text" name="q" class="form-control" placeholder="搜索项目名称、安全事项、负责人..." value="{{ keyword }}">
+                <button class="btn btn-primary"><i class="bi bi-search"></i> 搜索</button>
+            </div>
+            <div class="row g-2">
+                <div class="col-4">
+                    <select name="responsible" class="form-select">
+                        <option value="">全部负责人</option>
+                        {% for r in responsibles %}
+                        <option value="{{ r }}" {{ 'selected' if responsible == r }}>{{ r }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-4">
+                    <select name="status" class="form-select">
+                        <option value="">全部状态</option>
+                        <option value="completed" {{ 'selected' if status_filter == 'completed' }}>已完成</option>
+                        <option value="pending" {{ 'selected' if status_filter == 'pending' }}>待完成</option>
+                    </select>
+                </div>
+                <div class="col-4">
+                    <a href="{{ url_for('shutdown.search') }}" class="btn btn-outline-secondary w-100">清除筛选</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if results is not none %}
+<div class="small text-muted mb-2">找到 {{ results|length }} 条结果</div>
+{% for item in results %}
+<div class="search-result">
+    <div class="d-flex justify-content-between align-items-start">
+        <div class="flex-grow-1">
+            <span class="date-badge me-2">{{ item.plan.plan_date.strftime('%Y-%m-%d') if item.plan else '' }}</span>
+            <span class="project-name">{{ item.project_name or '(未命名项目)' }} [{{ item.seq }}]</span>
+        </div>
+        <span class="badge {{ 'bg-success' if item.completed else 'bg-warning text-dark' }}">
+            {{ '已完成' if item.completed else '待完成' }}
+        </span>
+    </div>
+    <div class="meta mt-1">
+        负责人：<strong>{{ item.responsible or '-' }}</strong>
+        {% if item.members %} · 成员：{{ item.members }}{% endif %}
+    </div>
+    {% if item.safety_notes %}
+    <div class="meta">⚠ 安全注意：{{ item.safety_notes }}</div>
+    {% endif %}
+    {% if item.complete_note %}
+    <div class="meta text-success">备注：{{ item.complete_note }}</div>
+    {% endif %}
+</div>
+{% endfor %}
+{% if not results %}
+<div class="empty-state">
+    <i class="bi bi-inbox"></i>
+    <p>没有找到匹配的停机计划项目</p>
+    <p class="small text-muted">请先由管理员加载停机计划，或尝试其他搜索条件</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
