@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}设备型号搜索 - 班组管理{% endblock %}
+{% block extra_css %}
+<style>
+.bom-header {
+    margin: -12px -12px 12px -12px;
+    padding: 16px 16px 12px;
+    background: linear-gradient(135deg, #00897b 0%, #26a69a 100%);
+    color: #fff;
+    border-radius: 0 0 16px 16px;
+}
+.bom-header h1 { font-size: 19px; font-weight: 700; margin: 0; }
+.bom-header-sub { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+
+.bom-tabs {
+    display: flex; gap: 8px; padding: 12px 16px; background: #f5f5f5;
+}
+.bom-tab {
+    padding: 8px 16px; border-radius: 20px; text-decoration: none; color: #666;
+    font-weight: 500; transition: all 0.2s;
+}
+.bom-tab:hover { background: #e0e0e0; }
+.bom-tab.active { background: var(--primary); color: white; }
+
+.bom-search-box {
+    background: var(--card-bg); border-radius: 16px; padding: 16px;
+    margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.bom-search-input {
+    width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0;
+    border-radius: 12px; font-size: 15px; outline: none; transition: border-color 0.2s;
+}
+.bom-search-input:focus { border-color: #00897b; }
+.bom-search-btn {
+    width: 100%; padding: 12px; margin-top: 10px;
+    background: linear-gradient(135deg, #00897b 0%, #26a69a 100%);
+    color: white; border: none; border-radius: 12px; font-size: 15px;
+    font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+}
+.bom-search-btn:hover { opacity: 0.9; }
+
+.bom-result-count {
+    padding: 10px 16px; background: #e8f5e9; border-radius: 10px;
+    margin-bottom: 12px; font-size: 13px; color: #2e7d32;
+}
+.bom-no-result {
+    text-align: center; padding: 40px 20px; color: #999;
+}
+
+.bom-card {
+    background: var(--card-bg); border-radius: 12px; padding: 14px;
+    margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-left: 4px solid #00897b;
+}
+.bom-card .card-file {
+    font-size: 11px; color: #888; margin-bottom: 8px; padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.bom-card .card-section-title {
+    font-size: 11px; font-weight: 700; color: #00897b;
+    padding: 4px 0; margin: 6px 0 2px; border-bottom: 1px dashed #e0e0e0;
+}
+.bom-card .card-row {
+    display: flex; padding: 3px 0; font-size: 12px; line-height: 1.6;
+}
+.bom-card .card-label {
+    color: #888; min-width: 60px; flex-shrink: 0; font-weight: 500;
+}
+.bom-card .card-value {
+    color: #333; word-break: break-all;
+}
+.bom-card .card-value.highlight {
+    background: #fff39c; padding: 1px 4px; border-radius: 3px; font-weight: bold;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="bom-header">
+    <h1><i class="bi bi-cpu"></i> 设备型号搜索</h1>
+    <div class="bom-header-sub">从BOM清单中搜索设备信息</div>
+</div>
+
+<div class="bom-tabs">
+    <a href="{{ url_for('spare_parts.index') }}" class="bom-tab">
+        <i class="bi bi-box-seam"></i> 备件库存
+    </a>
+    <a href="{{ url_for('spare_parts.bom_search') }}" class="bom-tab active">
+        <i class="bi bi-cpu"></i> 设备型号
+    </a>
+</div>
+
+<div class="bom-search-box">
+    <form method="get" action="{{ url_for('spare_parts.bom_search') }}">
+        <input type="text" name="device_id" class="bom-search-input"
+               placeholder="输入设备编号，如 AB28AM503" value="{{ device_id }}"
+               autocomplete="off">
+        <button type="submit" class="bom-search-btn">
+            <i class="bi bi-search"></i> 搜索
+        </button>
+    </form>
+</div>
+
+{% if results %}
+<div class="bom-result-count">找到 <strong>{{ results|length }}</strong> 条结果 (搜索词: {{ device_id }})</div>
+
+{% for item in results %}
+<div class="bom-card">
+    <div class="card-file">
+        <i class="bi bi-file-earmark-excel"></i> {{ item.file }}
+    </div>
+    {% for section in item.sections %}
+    <div class="card-section-title" style="color:{{ section.color }};">【{{ section.title }}】</div>
+    {% for cell in section.cells %}
+        {% if cell.strip() %}
+        <div class="card-row">
+            <span class="card-label">{{ item.headers[loop.index0] if loop.index0 < item.headers|length else '列'+loop.index0|string }}:</span>
+            <span class="card-value{% if section.matched_col is defined and loop.index0 == section.matched_col %} highlight{% endif %}">{{ cell }}</span>
+        </div>
+        {% endif %}
+    {% endfor %}
+    {% endfor %}
+</div>
+{% endfor %}
+
+{% elif device_id %}
+<div class="bom-no-result">
+    <i class="bi bi-search" style="font-size:48px;color:#ddd;display:block;margin-bottom:10px;"></i>
+    <p>未找到匹配 "<strong>{{ device_id }}</strong>" 的设备编号</p>
+    <p style="font-size:11px;color:#ccc;margin-top:8px;">搜索了 BOM_清单 文件夹中的文件</p>
+</div>
+{% else %}
+<div style="text-align:center;padding:20px;color:#ccc;font-size:12px;">V3-分段显示-请输入设备编号搜索</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelector('.bom-search-input').focus();
+</script>
+{% endblock %}

@@ -40,6 +40,50 @@ def get_file_type(filename):
     return 'other'
 
 
+def search_filesystem(search_term, base_path):
+    """在文件系统中搜索匹配的文件"""
+    results = []
+    search_lower = search_term.lower()
+    
+    for root, dirs, files in os.walk(base_path):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        
+        for filename in files:
+            if filename.startswith('.'):
+                continue
+            
+            # 检查文件名是否匹配
+            if search_lower in filename.lower():
+                rel_path = os.path.relpath(os.path.join(root, filename), base_path)
+                filepath = os.path.join(root, filename)
+                
+                try:
+                    stat = os.stat(filepath)
+                    size = stat.st_size
+                    if size < 1024:
+                        size_str = f'{size}B'
+                    elif size < 1024*1024:
+                        size_str = f'{size/1024:.1f}KB'
+                    elif size < 1024*1024*1024:
+                        size_str = f'{size/(1024*1024):.1f}MB'
+                    else:
+                        size_str = f'{size/(1024*1024*1024):.1f}GB'
+                    
+                    results.append({
+                        'type': 'filesystem',
+                        'name': filename,
+                        'path': rel_path.replace('\\', '/'),
+                        'size': size_str,
+                        'ext': filename.rsplit('.', 1)[1].lower() if '.' in filename else '',
+                        'static_url': url_for('static', filename='uploads/' + rel_path.replace('\\', '/')),
+                    })
+                except Exception:
+                    continue
+    
+    results.sort(key=lambda x: x['name'].lower())
+    return results
+
+
 @documents_bp.route('/')
 @login_required
 def index():
@@ -50,12 +94,23 @@ def index():
     query = Document.query.order_by(Document.created_at.desc())
     if category_id:
         query = query.filter_by(category_id=category_id)
+    
+    # 数据库文档搜索
+    db_documents = []
     if search:
         query = query.filter(Document.title.contains(search) | Document.original_filename.contains(search))
-    documents = query.all()
-
+        db_documents = query.all()
+    else:
+        db_documents = query.all()
+    
+    # 文件系统搜索（仅在有搜索关键字时）
+    fs_documents = []
+    if search:
+        fs_documents = search_filesystem(search, Config.UPLOAD_FOLDER)
+    
     return render_template('documents/index.html',
-                           documents=documents,
+                           documents=db_documents,
+                           fs_documents=fs_documents,
                            categories=categories,
                            current_category_id=category_id,
                            search=search)

@@ -162,11 +162,41 @@ function toggleFolderMode() {
                 </div>
             </div>
             {% endfor %}
-        {% else %}
+        {% elif not search %}
             <div class="empty-state">
                 <i class="bi bi-folder2-open"></i>
                 <p>暂无资料，点击上方按钮上传</p>
             </div>
+        {% endif %}
+        
+        {% if fs_documents %}
+        <div class="border-t border-gray-200 my-3"></div>
+        <div class="px-3 py-2">
+            <span class="text-sm text-gray-500" style="display:flex;align-items:center;gap:4px">
+                <i class="bi bi-folder-open"></i> 文件系统匹配 ({{ fs_documents|length }}项)
+            </span>
+        </div>
+        {% for doc in fs_documents %}
+        <div class="doc-item px-3" style="background:#f8fafc">
+            <div class="file-type-icon" style="background:#f0f9ff">
+                <i class="bi bi-{{ 'file-earmark-pdf' if doc.ext == 'pdf' else 'file-earmark-image' if doc.ext in ['jpg','jpeg','png','gif','bmp','svg'] else 'file-earmark-zip' if doc.ext in ['zip','rar','7z'] else 'file-earmark-text' }}"></i>
+            </div>
+            <div class="doc-info">
+                <div class="title" style="color:#0ea5e9">{{ doc.name }}</div>
+                <div class="meta">{{ doc.size }} · 直接拷贝文件</div>
+            </div>
+            <div class="d-flex gap-1">
+                <a href="{{ doc.static_url }}" download class="btn btn-sm btn-outline-primary" style="border-radius:20px" title="下载">
+                    <i class="bi bi-download"></i>
+                </a>
+                {% if doc.ext in ['jpg','jpeg','png','gif','bmp','svg'] %}
+                <a href="{{ doc.static_url }}" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:20px" title="预览">
+                    <i class="bi bi-eye"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
         {% endif %}
     </div>
 </div>

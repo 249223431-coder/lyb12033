@@ -102,6 +102,24 @@
 }
 .sp-export-chip:hover { background: var(--primary-light); color: var(--primary); }
 
+/* Tab切换 */
+.sp-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #f5f5f5;
+}
+.sp-tab {
+    padding: 8px 16px;
+    border-radius: 20px;
+    text-decoration: none;
+    color: #666;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.sp-tab:hover { background: #e0e0e0; }
+.sp-tab.active { background: var(--primary); color: white; }
+
 /* modal tweaks */
 .modal-header { border-bottom: none; padding: 16px 16px 8px; }
 .modal-body { padding: 8px 16px 16px; }
@@ -112,7 +130,7 @@
 <div class="sp-header">
     <div class="sp-header-top">
         <div>
-            <h1><i class="bi bi-box-seam"></i> 备件库存</h1>
+            <h1><i class="bi bi-box-seam"></i> 备件管理</h1>
             <div class="sp-header-sub">输入关键字搜索，或使用下方筛选查看</div>
         </div>
         <div class="sp-header-btns">
@@ -120,6 +138,15 @@
             <a href="{{ url_for('spare_parts.transactions') }}" class="btn btn-light btn-sm" style="background:rgba(255,255,255,0.2);color:#fff;border:none"><i class="bi bi-arrow-left-right"></i> 记录</a>
         </div>
     </div>
+</div>
+
+<div class="sp-tabs">
+    <a href="{{ url_for('spare_parts.index') }}" class="sp-tab active">
+        <i class="bi bi-box-seam"></i> 备件库存
+    </a>
+    <a href="{{ url_for('spare_parts.bom_search') }}" class="sp-tab">
+        <i class="bi bi-cpu"></i> 设备型号
+    </a>
 </div>
 
 <form>

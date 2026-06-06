@@ -557,6 +557,19 @@ body {
     }
 }
 
+.bom-full-width {
+    position: relative;
+    width: 100vw;
+    left: calc(-50vw + 50%);
+    margin: 12px 0;
+}
+.bom-full-width-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 12px;
+    overflow-x: auto;
+}
+
 @media (max-width: 360px) {
     .feature-grid {
         grid-template-columns: repeat(3, 1fr);
