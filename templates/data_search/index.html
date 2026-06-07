@@ -57,9 +57,7 @@
         </div>
         <div class="collect-header-actions">
             <a href="{{ url_for('data_search.my_submissions') }}" class="btn btn-sm btn-light"><i class="bi bi-clock-history"></i> 我的</a>
-            {% if current_user.is_admin %}
             <a href="{{ url_for('data_search.manage') }}" class="btn btn-sm btn-light"><i class="bi bi-gear"></i> 管理</a>
-            {% endif %}
         </div>
     </div>
 </div>

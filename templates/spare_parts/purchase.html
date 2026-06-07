@@ -87,11 +87,16 @@
             <div class="purch-search-wrap">
                 <input type="text" id="partSearch" class="form-control" placeholder="输入关键字从库中搜索，或直接填写名称" autocomplete="off" oninput="searchParts()" onfocus="searchParts()">
                 <input type="hidden" name="part_name" id="partName" value="">
+                <input type="hidden" name="part_code" id="partCode" value="">
                 <div class="purch-dropdown" id="partDropdown"></div>
             </div>
             <div class="search-hint">
                 <i class="bi bi-info-circle"></i> 输入名称关键字从库存中搜索选择，库中没有的备件直接填写即可
             </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">编码</label>
+            <input type="text" id="partCodeDisplay" class="form-control" placeholder="从库中选择后自动填充编码" readonly style="background:#f9f9f9">
         </div>
         <div class="row g-2 mb-3">
             <div class="col-7">
@@ -154,7 +159,7 @@ function searchParts() {
                 } else {
                     var html = '';
                     data.forEach(p => {
-                        html += '<div class="purch-dropdown-item" onclick="selectPart(\'' + escAttr(p.name) + '\', \'' + escAttr(p.model_spec) + '\')">' +
+                        html += '<div class="purch-dropdown-item" onclick="selectPart(\'' + escAttr(p.name) + '\', \'' + escAttr(p.model_spec) + '\', \'' + escAttr(p.part_code) + '\')">' +
                             '<div class="part-name">' + p.name + '</div>' +
                             '<div class="part-spec">' + (p.model_spec || '-') + '</div>' +
                             '<div class="part-code">编码: ' + p.part_code + '</div>' +
@@ -166,10 +171,11 @@ function searchParts() {
             });
     }, 300);
 }
-function selectPart(name, spec) {
+function selectPart(name, spec, code) {
     document.getElementById('partSearch').value = name;
     document.getElementById('partName').value = name;
     if (spec) document.getElementById('modelSpec').value = spec;
+    if (code) { document.getElementById('partCode').value = code; document.getElementById('partCodeDisplay').value = code; }
     document.getElementById('partDropdown').style.display = 'none';
 }
 function escAttr(s) { return (s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }

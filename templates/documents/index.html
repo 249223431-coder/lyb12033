@@ -149,11 +149,9 @@ function toggleFolderMode() {
                     <a href="{{ url_for('documents.download', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary" style="border-radius:20px" title="下载">
                         <i class="bi bi-download"></i>
                     </a>
-                    {% if doc.file_type == 'image' %}
-                    <a href="{{ url_for('documents.view', doc_id=doc.id) }}" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:20px" title="预览">
+                    <a href="{{ url_for('documents.viewer', doc_id=doc.id) }}" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:20px" title="查看">
                         <i class="bi bi-eye"></i>
                     </a>
-                    {% endif %}
                     {% if current_user.is_admin %}
                     <form method="POST" action="{{ url_for('documents.delete', doc_id=doc.id) }}" onsubmit="return confirm('确定删除？')">
                         <button class="btn btn-sm btn-outline-danger" style="border-radius:20px" title="删除"><i class="bi bi-trash"></i></button>
@@ -189,11 +187,9 @@ function toggleFolderMode() {
                 <a href="{{ doc.static_url }}" download class="btn btn-sm btn-outline-primary" style="border-radius:20px" title="下载">
                     <i class="bi bi-download"></i>
                 </a>
-                {% if doc.ext in ['jpg','jpeg','png','gif','bmp','svg'] %}
-                <a href="{{ doc.static_url }}" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:20px" title="预览">
+                <a href="{{ url_for('documents.viewer', file=doc.path, title=doc.name) }}" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:20px" title="查看">
                     <i class="bi bi-eye"></i>
                 </a>
-                {% endif %}
             </div>
         </div>
         {% endfor %}

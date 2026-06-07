@@ -20,11 +20,16 @@
 .sv-sub-id { font-size: 10px; color: #999; }
 .sv-time { font-size: 10px; color: #999; }
 .sv-file-link { font-size: 11px; color: var(--primary); text-decoration: none; }
+.sv-del-btn { color: #c62828; background: none; border: none; cursor: pointer; font-size: 14px; padding: 0 4px; }
 </style>
 {% endblock %}
 {% block content %}
 <div class="sv-header">
+    {% if readonly %}
+    <a href="{{ url_for('data_search.index') }}"><i class="bi bi-arrow-left"></i> 返回首页</a>
+    {% else %}
     <a href="{{ url_for('data_search.manage') }}"><i class="bi bi-arrow-left"></i> 返回管理</a>
+    {% endif %}
     <h1><i class="bi {{ form.icon or 'bi-clipboard' }}"></i> {{ form.title }}</h1>
     <p>共 {{ data|length }} 条提交记录</p>
 </div>
@@ -40,6 +45,9 @@
                 {% for f in fields %}
                 <th>{{ f.label }}</th>
                 {% endfor %}
+                {% if not readonly %}
+                <th style="width:40px;"></th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -60,6 +68,13 @@
                     {% endif %}
                 </td>
                 {% endfor %}
+                {% if not readonly %}
+                <td>
+                    <form method="POST" action="{{ url_for('data_search.delete_submission', submission_id=row.sub.id) }}" onsubmit="return confirm('确认删除该记录？')">
+                        <button type="submit" class="sv-del-btn" title="删除"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>

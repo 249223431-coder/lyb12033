@@ -54,6 +54,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _migrate_db(app)
         _init_default_data()
         _auto_backup()
 
@@ -96,6 +97,21 @@ def _init_default_data():
         if DocumentCategory.query.filter_by(name=name).first() is None:
             db.session.add(DocumentCategory(name=name, sort_order=i + 1, description=f'{name}资料库'))
     db.session.commit()
+
+
+def _migrate_db(app):
+    """安全迁移数据库结构，不丢失数据"""
+    from sqlalchemy import text, inspect
+    with app.app_context():
+        inspector = inspect(db.engine)
+        # purchase_requisitions表添加part_code列
+        if 'purchase_requisitions' in inspector.get_table_names():
+            cols = [c['name'] for c in inspector.get_columns('purchase_requisitions')]
+            if 'part_code' not in cols:
+                with db.engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE purchase_requisitions ADD COLUMN part_code VARCHAR(100) DEFAULT ''"))
+                    conn.commit()
+                print(' * [迁移] purchase_requisitions 表添加 part_code 列')
 
 
 if __name__ == '__main__':

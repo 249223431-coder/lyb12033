@@ -586,6 +586,7 @@ class PurchaseRequisition(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     part_name = db.Column(db.String(200), nullable=False)
+    part_code = db.Column(db.String(100), default='')
     model_spec = db.Column(db.String(200), default='')
     quantity = db.Column(db.Integer, default=1)
     purpose = db.Column(db.Text, default='')
@@ -600,6 +601,7 @@ class PurchaseRequisition(db.Model):
             'id': self.id,
             'user_name': self.user.real_name if self.user else '',
             'part_name': self.part_name,
+            'part_code': self.part_code or '',
             'model_spec': self.model_spec,
             'quantity': self.quantity,
             'purpose': self.purpose,

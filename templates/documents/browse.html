@@ -85,7 +85,7 @@
 {% if files %}
 <div class="br-section-title"><i class="bi bi-file-earmark"></i> 文件 ({{ files|length }})</div>
 {% for f in files %}
-<a href="{{ f.static_url }}" target="_blank" class="br-item">
+<a href="{{ url_for('documents.viewer', file=f.path, title=f.name) }}" target="_blank" class="br-item">
     <div class="br-item-icon" style="background:{{ '#e3f2fd' if f.ext in ('pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv') else '#e8f5e9' if f.ext in ('jpg','jpeg','png','gif','bmp','svg') else '#f3e5f5' }}">
         <i class="bi bi-{{ 'file-earmark-pdf' if f.ext == 'pdf' else 'file-earmark-image' if f.ext in ('jpg','jpeg','png','gif','bmp','svg') else 'file-earmark-zip' if f.ext in ('zip','rar','7z','tar','gz') else 'file-earmark-text' }}"></i>
     </div>
@@ -93,7 +93,7 @@
         <div class="br-item-name">{{ f.name }}</div>
         <div class="br-item-meta">{{ f.size }}</div>
     </div>
-    <i class="bi bi-download br-item-arrow"></i>
+    <i class="bi bi-arrow-right-circle br-item-arrow"></i>
 </a>
 {% endfor %}
 {% endif %}

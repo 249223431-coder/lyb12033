@@ -294,3 +294,393 @@ def browse(subpath=''):
     return render_template('documents/browse.html',
                            folders=folders, files=files,
                            subpath=safe_sub, breadcrumbs=breadcrumbs)
+
+
+@documents_bp.route('/raw/<int:doc_id>')
+@login_required
+def raw_file(doc_id):
+    """返回DB文档的原始文件内容，供内置查看器使用"""
+    doc = Document.query.get_or_404(doc_id)
+    filepath = os.path.join(Config.UPLOAD_FOLDER, doc.filename)
+    if not os.path.exists(filepath):
+        flash('文件不存在', 'error')
+        return redirect(url_for('documents.index'))
+    return send_file(filepath, download_name=doc.original_filename)
+
+
+@documents_bp.route('/pptx_preview/<int:doc_id>')
+@login_required
+def pptx_preview(doc_id):
+    """提取PPTX幻灯片文本为HTML"""
+    try:
+        from pptx import Presentation
+    except ImportError:
+        return '<p style="color:red;">python-pptx未安装</p>', 500
+
+    doc = Document.query.get_or_404(doc_id)
+    filepath = os.path.join(Config.UPLOAD_FOLDER, doc.filename)
+    if not os.path.exists(filepath):
+        return '<p>文件不存在</p>', 404
+
+    try:
+        prs = Presentation(filepath)
+        html = '<div style="font-family:sans-serif;">'
+        for i, slide in enumerate(prs.slides, 1):
+            html += f'<div style="margin:10px 0;padding:16px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">'
+            html += f'<div style="font-size:14px;font-weight:700;color:#00897b;margin-bottom:8px;">📊 幻灯片 {i}/{len(prs.slides)}</div>'
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for para in shape.text_frame.paragraphs:
+                        text = para.text.strip()
+                        if text:
+                            font_size = '13px'
+                            is_bold = False
+                            for run in para.runs:
+                                if run.font.size:
+                                    font_size = f'{run.font.size.pt}pt'
+                                if run.font.bold:
+                                    is_bold = True
+                            style = f'font-size:{font_size};'
+                            if is_bold:
+                                style += 'font-weight:700;'
+                            html += f'<p style="{style}margin:4px 0;">{text}</p>'
+                if shape.has_table:
+                    table = shape.table
+                    html += '<table style="border-collapse:collapse;width:100%;margin:8px 0;font-size:12px;">'
+                    for row in table.rows:
+                        html += '<tr>'
+                        for cell in row.cells:
+                            html += f'<td style="border:1px solid #ddd;padding:4px 8px;">{cell.text}</td>'
+                        html += '</tr>'
+                    html += '</table>'
+            html += '</div>'
+        html += '</div>'
+        return html
+    except Exception as e:
+        return f'<p style="color:red;">PPTX解析失败: {str(e)}</p>', 500
+
+
+@documents_bp.route('/viewer')
+@login_required
+def viewer():
+    """内置文件查看器 - 支持PDF/Excel/DOCX/图片/文本预览"""
+    doc_id = request.args.get('doc_id', '')
+    file_url = request.args.get('file', '')
+    title = request.args.get('title', '')
+
+    # 确定文件URL和类型
+    if doc_id:
+        doc = Document.query.get(int(doc_id))
+        if not doc:
+            return '文档不存在', 404
+        file_url = url_for('documents.raw_file', doc_id=doc_id)
+        title = title or doc.original_filename
+        ext = os.path.splitext(doc.original_filename)[1].lower()
+    elif file_url:
+        title = title or file_url.split('/')[-1]
+        ext = os.path.splitext(title)[1].lower() if '.' in title else ''
+        # 文件系统文件转换为static URL
+        if not file_url.startswith('/'):
+            file_url = url_for('static', filename='uploads/' + file_url)
+    else:
+        return '缺少文件参数', 400
+
+    # 判断文件类型
+    image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp'}
+    pdf_ext = '.pdf'
+    excel_exts = {'.xls', '.xlsx', '.xlsm', '.csv'}
+    doc_exts = {'.doc', '.docx'}
+    text_exts = {'.txt', '.log', '.md', '.py', '.html', '.css', '.js', '.json', '.xml', '.scr'}
+
+    viewer_type = 'unknown'
+    pptx_preview_html = ''
+    
+    if ext in image_exts:
+        viewer_type = 'image'
+    elif ext == pdf_ext:
+        viewer_type = 'pdf'
+    elif ext in excel_exts:
+        viewer_type = 'excel'
+    elif ext == '.docx':
+        viewer_type = 'doc'
+    elif ext == '.doc':
+        viewer_type = 'olddoc'
+    elif ext == '.pptx':
+        # 服务端提取PPTX文本
+        try:
+            from pptx import Presentation
+            if doc_id:
+                doc = Document.query.get(int(doc_id))
+                fpath = os.path.join(Config.UPLOAD_FOLDER, doc.filename)
+            else:
+                fpath = os.path.join(Config.UPLOAD_FOLDER, file_url.replace('\\', '/'))
+            if os.path.exists(fpath):
+                prs = Presentation(fpath)
+                h = '<div style="font-family:sans-serif;">'
+                for i, slide in enumerate(prs.slides, 1):
+                    h += f'<div style="margin:10px 0;padding:16px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">'
+                    h += f'<div style="font-size:14px;font-weight:700;color:#00897b;margin-bottom:8px;">📊 幻灯片 {i}/{len(prs.slides)}</div>'
+                    for shape in slide.shapes:
+                        if shape.has_text_frame:
+                            for para in shape.text_frame.paragraphs:
+                                text = para.text.strip()
+                                if text:
+                                    fs = '13px'
+                                    bd = ''
+                                    for run in para.runs:
+                                        if run.font.size: fs = f'{run.font.size.pt}pt'
+                                        if run.font.bold: bd = 'font-weight:700;'
+                                    h += f'<p style="font-size:{fs};{bd}margin:4px 0;">{text}</p>'
+                        if shape.has_table:
+                            h += '<table style="border-collapse:collapse;width:100%;margin:8px 0;font-size:12px;">'
+                            for row in shape.table.rows:
+                                h += '<tr>'
+                                for cell in row.cells:
+                                    h += f'<td style="border:1px solid #ddd;padding:4px 8px;">{cell.text}</td>'
+                                h += '</tr>'
+                            h += '</table>'
+                    h += '</div>'
+                h += '</div>'
+                pptx_preview_html = h
+                viewer_type = 'pptx_done'
+        except Exception as e:
+            pptx_preview_html = f'<div class="unsupported"><p>PPTX解析失败: {str(e)}</p><a href="{file_url}" download style="display:inline-block;margin-top:12px;padding:8px 24px;background:#00897b;color:#fff;border-radius:20px;text-decoration:none;">下载文件</a></div>'
+            viewer_type = 'pptx_done'
+    elif ext == '.ppt':
+        viewer_type = 'oldppt'
+    elif ext in text_exts:
+        viewer_type = 'text'
+
+    return f'''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>查看: {title}</title>
+     <style>
+         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+         body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f0f0; }}
+         .viewer-header {{
+             display: flex; align-items: center; gap: 12px; padding: 8px 12px;
+             background: #1a1a2e; color: #fff; position: sticky; top: 0; z-index: 100;
+         }}
+         .viewer-header .back {{ color: #fff; text-decoration: none; font-size: 20px; }}
+         .viewer-header .title {{ flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+         .viewer-header .actions {{ display: flex; gap: 8px; }}
+         .viewer-header .actions a {{
+             padding: 4px 10px; border-radius: 12px; font-size: 11px; text-decoration: none;
+             background: rgba(255,255,255,0.2); color: #fff;
+         }}
+         .viewer-content {{ width: 100%; }}
+         #viewer {{ width: 100%; overflow: auto; }}
+         .page-container {{ margin: 0 auto 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); position: relative; }}
+         canvas {{ display: block; margin: 0 auto; }}
+         .image-viewer {{ text-align: center; padding: 10px; }}
+         .image-viewer img {{ max-width: 100%; height: auto; }}
+         .text-viewer {{ padding: 12px; background: #fff; font-family: monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; min-height: 100vh; }}
+         .excel-viewer {{ padding: 10px; background: #fff; overflow: auto; }}
+         .excel-viewer table {{ border-collapse: collapse; font-size: 12px; }}
+         .excel-viewer td, .excel-viewer th {{ border: 1px solid #ddd; padding: 6px 8px; min-width: 60px; }}
+         .excel-viewer th {{ background: #f5f5f5; font-weight: 600; position: sticky; top: 0; }}
+         .doc-viewer {{ padding: 16px; background: #fff; max-width: 800px; margin: 0 auto; min-height: 100vh; font-size: 14px; line-height: 1.8; }}
+         .loading {{ text-align: center; padding: 60px; color: #999; }}
+         .unsupported {{ text-align: center; padding: 60px; color: #999; }}
+         .unsupported i {{ font-size: 48px; display: block; margin-bottom: 10px; color: #ddd; }}
+     </style>
+ </head>
+ <body>
+ <div class="viewer-header">
+     <a href="javascript:history.back()" class="back">←</a>
+     <span class="title">{title}</span>
+     <div class="actions">
+         <a href="{file_url}" download>下载</a>
+     </div>
+ </div>
+ <div class="viewer-content">
+     <div id="viewer">
+         <div id="loadingArea" class="loading">加载中...</div>
+     </div>
+ </div>
+ <script>
+ const FILE_URL = "{file_url}";
+ const VIEWER_TYPE = "{viewer_type}";
+ const TITLE = "{title}";
+ const FILE_EXT = "{ext}";
+
+function hideLoading() {{ const el = document.getElementById('loadingArea'); if (el) el.style.display = 'none'; }}
+
+async function initViewer() {{
+    const viewer = document.getElementById('viewer');
+
+    if (VIEWER_TYPE === 'image') {{
+        viewer.innerHTML = `<div class="image-viewer"><img src="${{FILE_URL}}" alt="${{TITLE}}"></div>`;
+        hideLoading();
+    }}
+    else if (VIEWER_TYPE === 'text') {{
+        try {{
+            const resp = await fetch(FILE_URL);
+            const text = await resp.text();
+            viewer.innerHTML = `<div class="text-viewer">${{escapeHtml(text)}}</div>`;
+        }} catch(e) {{
+            viewer.innerHTML = '<div class="loading">加载失败: ' + e.message + '</div>';
+        }}
+        hideLoading();
+    }}
+    else if (VIEWER_TYPE === 'pdf') {{
+        // PDF.js CDN
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload = () => renderPDF();
+        document.head.appendChild(script);
+        const workerScript = document.createElement('script');
+        workerScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        document.head.appendChild(workerScript);
+    }}
+    else if (VIEWER_TYPE === 'excel') {{
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = () => renderExcel();
+        document.head.appendChild(script);
+    }}
+    else if (VIEWER_TYPE === 'doc') {{
+         const script = document.createElement('script');
+         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+         script.onload = () => renderDoc();
+         document.head.appendChild(script);
+     }}
+     else if (VIEWER_TYPE === 'pptx_done') {{
+         // 服务端已渲染
+         viewer.innerHTML = `{pptx_preview_html}`;
+         hideLoading();
+     }}
+     else if (VIEWER_TYPE === 'olddoc' || VIEWER_TYPE === 'oldppt') {{
+         const typeName = VIEWER_TYPE === 'olddoc' ? '旧版 .doc' : '旧版 .ppt';
+         viewer.innerHTML = `<div class="unsupported"><i>📄</i><p>${{typeName}} 格式不支持在线预览</p><p style="font-size:12px;color:#ccc;">请下载后用 Office/WPS 打开</p><a href="${{FILE_URL}}" download style="display:inline-block;margin-top:12px;padding:8px 24px;background:#00897b;color:#fff;border-radius:20px;text-decoration:none;">下载文件</a></div>`;
+         hideLoading();
+     }}
+     else {{
+          viewer.innerHTML = `<div class="unsupported"><i>📄</i><p>不支持预览此文件类型</p><p style="font-size:12px;color:#ccc;">${{TITLE}}</p><a href="${{FILE_URL}}" download style="display:inline-block;margin-top:12px;padding:8px 24px;background:#00897b;color:#fff;border-radius:20px;text-decoration:none;">下载文件</a></div>`;
+          hideLoading();
+      }}
+}}
+
+async function renderPDF() {{
+    try {{
+        const pdf = await pdfjsLib.getDocument(FILE_URL).promise;
+        const viewer = document.getElementById('viewer');
+        viewer.innerHTML = '';
+        const dpr = window.devicePixelRatio || 1;
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {{
+            const page = await pdf.getPage(pageNum);
+            const fitScale = (window.innerWidth - 16) / page.getViewport({{ scale: 1 }}).width;
+            const hiresScale = Math.max(fitScale, 1.2) * dpr;
+            const fitVp = page.getViewport({{ scale: fitScale * dpr }});
+            const hiresVp = page.getViewport({{ scale: hiresScale }});
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = fitVp.width;
+            canvas.height = fitVp.height;
+            canvas.style.width = (fitVp.width / dpr) + 'px';
+            canvas.style.height = (fitVp.height / dpr) + 'px';
+            canvas.style.cursor = 'zoom-in';
+            canvas.title = '点击放大查看';
+            
+            const container = document.createElement('div');
+            container.className = 'page-container';
+            container.appendChild(canvas);
+            viewer.appendChild(container);
+            
+            // 首次渲染：适应屏幕
+            await page.render({{ canvasContext: ctx, viewport: fitVp }}).promise;
+            
+            let zoomed = false;
+            canvas.onclick = async function() {{
+                if (!zoomed) {{
+                    canvas.width = hiresVp.width;
+                    canvas.height = hiresVp.height;
+                    canvas.style.width = (hiresVp.width / dpr) + 'px';
+                    canvas.style.height = (hiresVp.height / dpr) + 'px';
+                    canvas.style.cursor = 'zoom-out';
+                    canvas.title = '点击缩小';
+                    await page.render({{ canvasContext: ctx, viewport: hiresVp }}).promise;
+                    zoomed = true;
+                }} else {{
+                    canvas.width = fitVp.width;
+                    canvas.height = fitVp.height;
+                    canvas.style.width = (fitVp.width / dpr) + 'px';
+                    canvas.style.height = (fitVp.height / dpr) + 'px';
+                    canvas.style.cursor = 'zoom-in';
+                    canvas.title = '点击放大查看';
+                    await page.render({{ canvasContext: ctx, viewport: fitVp }}).promise;
+                    zoomed = false;
+                }}
+            }};
+        }}
+        hideLoading();
+    }} catch(e) {{
+        document.getElementById('viewer').innerHTML = '<div class="loading">PDF加载失败: ' + e.message + '</div>';
+        hideLoading();
+    }}
+}}
+
+async function renderExcel() {{
+    try {{
+        const resp = await fetch(FILE_URL);
+        const data = await resp.arrayBuffer();
+        let wb;
+        if (FILE_EXT === '.xls') {{
+            // 旧版.xls用binary方式读取
+            const bytes = new Uint8Array(data);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+            wb = XLSX.read(binary, {{ type: 'binary' }});
+        }} else {{
+            wb = XLSX.read(data, {{ type: 'array' }});
+        }}
+        let html = '<div class="excel-viewer">';
+        wb.SheetNames.forEach((name) => {{
+            const ws = wb.Sheets[name];
+            const tableHtml = XLSX.utils.sheet_to_html(ws, {{ editable: false }});
+            if (wb.SheetNames.length > 1) {{
+                html += `<h3 style="margin:8px 0;font-size:13px;">${{name}}</h3>`;
+            }}
+            html += tableHtml;
+        }});
+        html += '</div>';
+        document.getElementById('viewer').innerHTML = html;
+        hideLoading();
+    }} catch(e) {{
+        document.getElementById('viewer').innerHTML = '<div class="loading">Excel加载失败: ' + e.message + '</div>';
+        hideLoading();
+    }}
+}}
+
+async function renderDoc() {{
+    if (FILE_EXT === '.doc') {{
+        document.getElementById('viewer').innerHTML = `<div class="unsupported"><i>📄</i><p>旧版 .doc 格式不支持在线预览</p><p style="font-size:12px;color:#ccc;">请下载后用 Word/WPS 打开</p><a href="${{FILE_URL}}" download style="display:inline-block;margin-top:12px;padding:8px 24px;background:#00897b;color:#fff;border-radius:20px;text-decoration:none;">下载文件</a></div>`;
+        hideLoading();
+        return;
+    }}
+    try {{
+        const resp = await fetch(FILE_URL);
+        const data = await resp.arrayBuffer();
+        const result = await mammoth.convertToHtml({{ arrayBuffer: data }});
+        document.getElementById('viewer').innerHTML = `<div class="doc-viewer">${{result.value}}</div>`;
+        hideLoading();
+    }} catch(e) {{
+        document.getElementById('viewer').innerHTML = '<div class="loading">文档加载失败: ' + e.message + '</div>';
+        hideLoading();
+    }}
+}}
+
+function escapeHtml(text) {{
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+}}
+
+initViewer();
+</script>
+</body>
+</html>'''

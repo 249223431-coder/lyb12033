@@ -176,11 +176,11 @@ def export_purchase():
         return redirect(url_for('spare_parts.purchase_list'))
 
     records = PurchaseRequisition.query.order_by(PurchaseRequisition.created_at.desc()).all()
-    columns = ['备件名称', '型号规格', '数量', '请购目的', '提交人', '状态', '提交时间']
+    columns = ['编码', '备件名称', '型号规格', '数量', '请购目的', '提交人', '状态', '提交时间']
     data = []
     for r in records:
         data.append([
-            r.part_name, r.model_spec, r.quantity, r.purpose,
+            r.part_code or '', r.part_name, r.model_spec, r.quantity, r.purpose,
             r.user.real_name if r.user else '',
             {'pending': '待确认', 'confirmed': '已确认', 'cancelled': '已取消'}.get(r.status, r.status),
             r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else ''

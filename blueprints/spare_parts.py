@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from models import db, SparePart, StockTransaction, PurchaseRequisition
 from blueprints.auth import admin_required
 import os, uuid
+from pathlib import Path
 from config import Config
 
 spare_parts_bp = Blueprint('spare_parts', __name__)
@@ -175,6 +176,7 @@ def transactions():
 def purchase():
     if request.method == 'POST':
         part_name = request.form.get('part_name', '').strip()
+        part_code = request.form.get('part_code', '').strip()
         model_spec = request.form.get('model_spec', '').strip()
         purpose = request.form.get('purpose', '').strip()
         quantity = request.form.get('quantity', 1, type=int)
@@ -192,8 +194,8 @@ def purchase():
                     image_path = unique_name
         pr = PurchaseRequisition(
             user_id=current_user.id, part_name=part_name,
-            model_spec=model_spec, quantity=quantity,
-            purpose=purpose, image_path=image_path
+            part_code=part_code, model_spec=model_spec,
+            quantity=quantity, purpose=purpose, image_path=image_path
         )
         db.session.add(pr)
         db.session.commit()
@@ -248,7 +250,13 @@ def api_search():
 
 import xlrd
 import re
-from pathlib import Path
+import os as _os
+
+_devnull = open(_os.devnull, 'w')
+
+def _open_xls(path):
+    """静默打开Excel，抑制损坏文件的OLE2警告"""
+    return xlrd.open_workbook(str(path), logfile=_devnull)
 
 
 @spare_parts_bp.route('/bom_search')
@@ -262,7 +270,7 @@ def bom_search():
         bom_dir = Path(r"E:\team\team\static\uploads\BOM_清单")
         for bom_file in bom_dir.glob("*.xls*"):
             try:
-                wb = xlrd.open_workbook(str(bom_file))
+                wb = _open_xls(bom_file)
                 ws = wb.sheet_by_index(0)
 
                 # 获取表头：找到包含"No."、"Item"或"Part"的行
@@ -309,6 +317,8 @@ def bom_search():
                             # 找上下文零件行
                             prev_part = None
                             next_part = None
+                            prev_part_idx = None
+                            next_part_idx = None
                             non_empty_count = sum(1 for c in row_data if c.strip())
                             if non_empty_count <= 3:
                                 for prev_idx in range(row_idx - 1, max(row_idx - 5, start_row - 1), -1):
@@ -316,13 +326,35 @@ def bom_search():
                                         pr = all_rows[prev_idx]
                                         if sum(1 for c in pr if c.strip()) > 3:
                                             prev_part = pr
+                                            prev_part_idx = prev_idx
                                             break
                                 for next_idx in range(row_idx + 1, min(row_idx + 5, max(all_rows.keys()) + 1)):
                                     if next_idx in all_rows:
                                         nr = all_rows[next_idx]
                                         if sum(1 for c in nr if c.strip()) > 3:
                                             next_part = nr
+                                            next_part_idx = next_idx
                                             break
+
+                            # 合并续行：part行和匹配行之间的Description续行
+                            def merge_continuations(part_data, part_idx, match_idx):
+                                if part_idx is None:
+                                    return part_data
+                                result = list(part_data)
+                                # 收集part行到匹配行之间的续行Description
+                                extras = []
+                                for mid_idx in range(part_idx + 1, match_idx):
+                                    if mid_idx in all_rows:
+                                        mr = all_rows[mid_idx]
+                                        # 续行：只有Description列有数据，没有Part/Item
+                                        if not mr[0].strip() and not mr[1].strip() and mr[4].strip():
+                                            extras.append(mr[4])
+                                if extras:
+                                    result[4] = result[4] + ' / ' + ' / '.join(extras)
+                                return result
+
+                            prev_part = merge_continuations(prev_part, prev_part_idx, row_idx)
+                            next_part = merge_continuations(next_part, next_part_idx, row_idx) if next_part_idx else None
 
                             # 构建分层展示数据
                             sections = []
@@ -375,7 +407,8 @@ def bom_search():
     if device_id and results:
         result_html += f'<div class="bom-result-count">找到 <strong>{len(results)}</strong> 条结果 (搜索词: {device_id})</div>'
         for item in results:
-            result_html += '<div class="bom-card"><div class="card-file"><i class="bi bi-file-earmark-excel"></i> ' + item['file'] + '</div>'
+            bom_file_path = 'BOM_清单/' + item['file']
+            result_html += '<div class="bom-card"><div class="card-file"><i class="bi bi-file-earmark-excel"></i> <a href="/documents/viewer?file=' + bom_file_path + '&title=' + item['file'] + '" target="_blank" style="color:#00897b;text-decoration:none;">' + item['file'] + '</a></div>'
             for section in item['sections']:
                 result_html += f'<div class="card-section-title" style="color:{section["color"]};">【{section["title"]}】</div>'
                 for i, cell in enumerate(section['cells']):
@@ -477,7 +510,7 @@ def api_bom_search():
 
     for bom_file in bom_dir.glob("*.xls*"):
         try:
-            wb = xlrd.open_workbook(str(bom_file))
+            wb = _open_xls(bom_file)
             ws = wb.sheet_by_index(0)
 
             # 获取表头：找到包含"No."或"Item"的行
@@ -545,7 +578,7 @@ def api_bom_list():
 
     for bom_file in bom_dir.glob("*.xls*"):
         try:
-            wb = xlrd.open_workbook(str(bom_file))
+            wb = _open_xls(bom_file)
             ws = wb.sheet_by_index(0)
 
             for row_idx in range(10, ws.nrows):
