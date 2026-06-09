@@ -268,7 +268,7 @@ _bom_cache_ready = False
 def _load_bom_cache():
     """预加载所有BOM文件到内存缓存"""
     global _bom_cache, _bom_cache_ready
-    bom_dir = Path(r"E:\team\team\static\uploads\BOM_清单")
+    bom_dir = Path(r"E:\team\team\static\uploads\BOM_清单_清理")
     if not bom_dir.exists():
         _bom_cache_ready = True
         return
