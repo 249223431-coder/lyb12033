@@ -2,6 +2,19 @@ from flask import Flask
 from config import Config
 from models import db
 from flask_login import LoginManager
+from sqlalchemy import event
+
+
+def _enable_wal(dbapi_connection, connection_record):
+    """启用SQLite WAL模式，允许并发读写"""
+    import sqlite3
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA cache_size=-8000")  # 8MB缓存
+        cursor.execute("PRAGMA temp_store=MEMORY")
+        cursor.close()
 
 
 def create_app():
@@ -9,6 +22,9 @@ def create_app():
     app.config.from_object(Config)
 
     db.init_app(app)
+
+    with app.app_context():
+        event.listen(db.engine, 'connect', _enable_wal)
 
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -122,4 +138,4 @@ if __name__ == '__main__':
     else:
         from waitress import serve
         print(' * 使用Waitress生产模式启动...')
-        serve(app, host='0.0.0.0', port=3000, threads=4, max_request_body_size=536870912)
+        serve(app, host='0.0.0.0', port=3000, threads=16, connection_limit=100, channel_timeout=120, max_request_body_size=536870912)

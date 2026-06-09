@@ -52,7 +52,7 @@ echo   按 Ctrl+C 可停止服务
 echo ========================================
 echo.
 
-:: 默认使用 Waitress 生产模式启动
-python -c "from waitress import serve; from app import create_app; serve(create_app(), host='0.0.0.0', port=3000, threads=4, max_request_body_size=536870912)"
+:: 默认使用 Waitress 生产模式启动 (16线程 + 连接优化)
+python -c "from waitress import serve; from app import create_app; serve(create_app(), host='0.0.0.0', port=3000, threads=16, connection_limit=100, channel_timeout=120, max_request_body_size=536870912)"
 :: 如需调试模式，使用: python app.py --dev
 pause

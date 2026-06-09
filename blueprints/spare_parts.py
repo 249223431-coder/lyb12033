@@ -251,6 +251,8 @@ def api_search():
 import xlrd
 import re
 import os as _os
+import time
+import threading
 
 _devnull = open(_os.devnull, 'w')
 
@@ -258,59 +260,120 @@ def _open_xls(path):
     """静默打开Excel，抑制损坏文件的OLE2警告"""
     return xlrd.open_workbook(str(path), logfile=_devnull)
 
+# ---- BOM数据内存缓存 ----
+_bom_cache_lock = threading.Lock()
+_bom_cache = {}   # {filename: {'mtime': ..., 'data': [...]}}
+_bom_cache_ready = False
+
+def _load_bom_cache():
+    """预加载所有BOM文件到内存缓存"""
+    global _bom_cache, _bom_cache_ready
+    bom_dir = Path(r"E:\team\team\static\uploads\BOM_清单")
+    if not bom_dir.exists():
+        _bom_cache_ready = True
+        return
+    
+    new_cache = {}
+    for bom_file in bom_dir.glob("*.xls*"):
+        try:
+            mtime = bom_file.stat().st_mtime
+            # 如果已有缓存且文件未修改，跳过
+            if bom_file.name in _bom_cache and _bom_cache[bom_file.name].get('mtime') == mtime:
+                new_cache[bom_file.name] = _bom_cache[bom_file.name]
+                continue
+            
+            wb = _open_xls(bom_file)
+            ws = wb.sheet_by_index(0)
+            
+            # 表头
+            headers = []
+            header_row_idx = -1
+            for hr in range(min(15, ws.nrows)):
+                hd = []
+                for c in range(min(ws.ncols, 15)):
+                    v = str(ws.cell_value(hr, c)).strip()
+                    hd.append(v if v else f'列{c}')
+                if any('No.' in h or 'Item' in h or 'Part' in h for h in hd):
+                    headers = hd
+                    header_row_idx = hr
+                    break
+            
+            start_row = header_row_idx + 1 if header_row_idx >= 0 else 10
+            
+            # 读取所有行
+            all_rows = {}
+            for row_idx in range(start_row, ws.nrows):
+                row_data = []
+                for c in range(min(ws.ncols, 15)):
+                    cv = ws.cell_value(row_idx, c)
+                    if isinstance(cv, float) and cv == int(cv):
+                        row_data.append(str(int(cv)))
+                    else:
+                        row_data.append(str(cv))
+                if any(c.strip() for c in row_data):
+                    all_rows[row_idx] = row_data
+            
+            # 顶部信息行
+            top_info_row = None
+            for row_idx in sorted(all_rows.keys()):
+                rd = all_rows[row_idx]
+                if not rd[0].strip() and (rd[1].strip() or rd[3].strip() or rd[4].strip()):
+                    top_info_row = [str(c) if c else '' for c in rd]
+                    break
+            
+            wb.release_resources()
+            
+            new_cache[bom_file.name] = {
+                'mtime': mtime,
+                'headers': [str(h) if h else '' for h in headers],
+                'all_rows': {k: [str(c) if c else '' for c in v] for k, v in all_rows.items()},
+                'top_info_row': top_info_row,
+            }
+        except Exception:
+            continue
+    
+    with _bom_cache_lock:
+        _bom_cache = new_cache
+        _bom_cache_ready = True
+
+def _get_bom_cache():
+    """获取BOM缓存，首次调用时加载"""
+    global _bom_cache_ready
+    if not _bom_cache_ready:
+        _load_bom_cache()
+    return _bom_cache
+
+def _check_bom_updates():
+    """定期检查BOM文件更新（每5分钟）"""
+    while True:
+        time.sleep(300)
+        try:
+            _load_bom_cache()
+        except Exception:
+            pass
+
+# 启动后台缓存检查线程
+_bom_update_thread = threading.Thread(target=_check_bom_updates, daemon=True)
+_bom_update_thread.start()
+
 
 @spare_parts_bp.route('/bom_search')
 @login_required
 def bom_search():
-    """BOM设备型号搜索页面 - 支持GET参数直接搜索"""
+    """BOM设备型号搜索页面 - 支持GET参数直接搜索 (使用缓存加速)"""
     device_id = request.args.get('device_id', '').strip()
     results = []
 
     if device_id and len(device_id) >= 2:
-        bom_dir = Path(r"E:\team\team\static\uploads\BOM_清单")
-        for bom_file in bom_dir.glob("*.xls*"):
+        bom_cache = _get_bom_cache()
+        
+        for filename, cache_entry in bom_cache.items():
             try:
-                wb = _open_xls(bom_file)
-                ws = wb.sheet_by_index(0)
-
-                # 获取表头：找到包含"No."、"Item"或"Part"的行
-                headers = []
-                header_row_idx = -1
-                for hr in range(min(15, ws.nrows)):
-                    hd = []
-                    for c in range(min(ws.ncols, 15)):
-                        v = str(ws.cell_value(hr, c)).strip()
-                        hd.append(v if v else f'列{c}')
-                    if any('No.' in h or 'Item' in h or 'Part' in h for h in hd):
-                        headers = hd
-                        header_row_idx = hr
-                        break
-
-                # 从表头下一行开始搜索
-                start_row = header_row_idx + 1 if header_row_idx >= 0 else 10
-                
-                # 先收集所有行数据
-                all_rows = {}
-                for row_idx in range(start_row, ws.nrows):
-                    row_data = []
-                    for c in range(min(ws.ncols, 15)):
-                        cv = ws.cell_value(row_idx, c)
-                        if isinstance(cv, float) and cv == int(cv):
-                            row_data.append(str(int(cv)))
-                        else:
-                            row_data.append(str(cv))
-                    if any(c.strip() for c in row_data):
-                        all_rows[row_idx] = row_data
+                headers = cache_entry['headers']
+                all_rows = cache_entry['all_rows']
+                top_info_row = cache_entry['top_info_row']
 
                 # 搜索匹配
-                # 找顶部装配信息（前几行数据中Part列为空的）
-                top_info_row = None
-                for row_idx in sorted(all_rows.keys()):
-                    rd = all_rows[row_idx]
-                    if not rd[0].strip() and (rd[1].strip() or rd[3].strip() or rd[4].strip()):
-                        top_info_row = rd
-                        break
-
                 for row_idx, row_data in all_rows.items():
                     for ci in range(len(row_data)):
                         if row_data[ci].strip() and device_id.upper() in row_data[ci].upper():
@@ -321,7 +384,7 @@ def bom_search():
                             next_part_idx = None
                             non_empty_count = sum(1 for c in row_data if c.strip())
                             if non_empty_count <= 3:
-                                for prev_idx in range(row_idx - 1, max(row_idx - 5, start_row - 1), -1):
+                                for prev_idx in range(row_idx - 1, max(row_idx - 5, -1), -1):
                                     if prev_idx in all_rows:
                                         pr = all_rows[prev_idx]
                                         if sum(1 for c in pr if c.strip()) > 3:
@@ -336,17 +399,14 @@ def bom_search():
                                             next_part_idx = next_idx
                                             break
 
-                            # 合并续行：part行和匹配行之间的Description续行
                             def merge_continuations(part_data, part_idx, match_idx):
                                 if part_idx is None:
                                     return part_data
                                 result = list(part_data)
-                                # 收集part行到匹配行之间的续行Description
                                 extras = []
                                 for mid_idx in range(part_idx + 1, match_idx):
                                     if mid_idx in all_rows:
                                         mr = all_rows[mid_idx]
-                                        # 续行：只有Description列有数据，没有Part/Item
                                         if not mr[0].strip() and not mr[1].strip() and mr[4].strip():
                                             extras.append(mr[4])
                                 if extras:
@@ -356,32 +416,22 @@ def bom_search():
                             prev_part = merge_continuations(prev_part, prev_part_idx, row_idx)
                             next_part = merge_continuations(next_part, next_part_idx, row_idx) if next_part_idx else None
 
-                            # 构建分层展示数据
                             sections = []
                             
-                            # 第一层：设备型号
                             if top_info_row:
-                                sec_cells = []
-                                for c in range(min(ws.ncols, 15)):
-                                    v = top_info_row[c]
-                                    if isinstance(v, float) and v == int(v):
-                                        v = str(int(v))
-                                    sec_cells.append(str(v) if v else '')
+                                sec_cells = list(top_info_row)
                                 if any(c.strip() for c in sec_cells):
                                     sections.append({'title': '设备型号', 'cells': sec_cells, 'color': '#00897b'})
 
-                            # 第二层：匹配的设备编号
                             match_cells = list(row_data)
                             for i in range(len(match_cells)):
                                 if not match_cells[i].strip():
-                                    # 用附近零件行填充空列
                                     if prev_part and prev_part[i].strip():
                                         match_cells[i] = prev_part[i]
                                     elif next_part and next_part[i].strip():
                                         match_cells[i] = next_part[i]
                             sections.append({'title': '匹配的设备', 'cells': match_cells, 'color': '#e65100', 'matched_col': ci})
 
-                            # 第三层：关联零件
                             if prev_part:
                                 sec_cells = list(prev_part)
                                 sections.append({'title': '关联零件', 'cells': sec_cells, 'color': '#666'})
@@ -390,13 +440,12 @@ def bom_search():
                                 sections.append({'title': '关联零件', 'cells': sec_cells, 'color': '#666'})
 
                             results.append({
-                                'file': bom_file.name,
+                                'file': filename,
                                 'headers': headers,
                                 'sections': sections,
                             })
                             break
 
-                wb.release_resources()
                 if len(results) > 200:
                     break
             except:
@@ -499,52 +548,31 @@ def bom_search():
 @spare_parts_bp.route('/api/bom/search')
 @login_required
 def api_bom_search():
-    """搜索设备型号API - 搜索所有列，返回整行数据"""
+    """搜索设备型号API - 搜索所有列，返回整行数据 (使用缓存)"""
     device_id = request.args.get('device_id', '').strip()
 
     if not device_id or len(device_id) < 2:
         return jsonify({'error': '请输入至少2个字符的设备编号'})
 
     results = []
-    bom_dir = Path(r"E:\team\team\static\uploads\BOM_清单")
+    bom_cache = _get_bom_cache()
 
-    for bom_file in bom_dir.glob("*.xls*"):
+    for filename, cache_entry in bom_cache.items():
         try:
-            wb = _open_xls(bom_file)
-            ws = wb.sheet_by_index(0)
+            headers = cache_entry['headers']
+            all_rows = cache_entry['all_rows']
 
-            # 获取表头：找到包含"No."或"Item"的行
-            headers = []
-            for header_row in range(min(15, ws.nrows)):
-                header_row_data = []
-                for col_idx in range(min(ws.ncols, 15)):
-                    cell_value = str(ws.cell_value(header_row, col_idx)).strip()
-                    header_row_data.append(cell_value if cell_value else f'列{col_idx}')
-                if any('No.' in h or 'Item' in h for h in header_row_data):
-                    headers = header_row_data
-                    break
-
-            for row_idx in range(10, ws.nrows):
-                # 获取整行数据（最多15列）
-                row_data = []
-                for col_idx in range(min(ws.ncols, 15)):
-                    cell_value = ws.cell_value(row_idx, col_idx)
-                    if isinstance(cell_value, float) and cell_value == int(cell_value):
-                        row_data.append(str(int(cell_value)))
-                    else:
-                        row_data.append(str(cell_value))
-
+            for row_idx, row_data in all_rows.items():
                 if not any(cell.strip() for cell in row_data):
                     continue
 
-                # 搜索所有列
                 for col_idx in range(len(row_data)):
                     cell_value = row_data[col_idx]
                     if not cell_value.strip():
                         continue
                     if device_id.upper() in cell_value.upper():
                         results.append({
-                            'file': bom_file.name,
+                            'file': filename,
                             'row_index': row_idx,
                             'headers': headers,
                             'row_data': row_data,
@@ -553,12 +581,10 @@ def api_bom_search():
                         })
                         break
 
-            wb.release_resources()
-
             if len(results) > 500:
                 break
 
-        except Exception as e:
+        except:
             continue
 
     return jsonify({
@@ -571,36 +597,26 @@ def api_bom_search():
 @spare_parts_bp.route('/api/bom/list')
 @login_required
 def api_bom_list():
-    """获取所有唯一设备编号列表（用于下拉选择）"""
+    """获取所有唯一设备编号列表（用于下拉选择）(使用缓存)"""
     device_ids = set()
-    bom_dir = Path(r"E:\team\team\static\uploads\BOM_清单")
     pattern = re.compile(r'AB\d{2}[A-Z][A-Z]\d{3,}[A-Z0-9-]*', re.IGNORECASE)
+    bom_cache = _get_bom_cache()
 
-    for bom_file in bom_dir.glob("*.xls*"):
+    for cache_entry in bom_cache.values():
         try:
-            wb = _open_xls(bom_file)
-            ws = wb.sheet_by_index(0)
+            all_rows = cache_entry['all_rows']
 
-            for row_idx in range(10, ws.nrows):
-                # 搜索第4、6、8三列
+            for row_data in all_rows.values():
                 for col_idx in [4, 6, 8]:
-                    if col_idx >= ws.ncols:
+                    if col_idx >= len(row_data):
                         continue
-
-                    cell_value = ws.cell_value(row_idx, col_idx)
-                    if cell_value:
-                        cell_str = str(cell_value)
-
-                        # 如果是第8列，直接添加
+                    cell_str = row_data[col_idx]
+                    if cell_str:
                         if col_idx == 8 and cell_str.strip().upper().startswith('AB'):
                             device_ids.add(cell_str.strip())
-
-                        # 其他列，正则提取
                         matches = pattern.findall(cell_str)
                         for match in matches:
                             device_ids.add(match.upper())
-
-            wb.release_resources()
         except:
             continue
 

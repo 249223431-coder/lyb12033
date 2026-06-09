@@ -41,12 +41,16 @@ def get_file_type(filename):
 
 
 def search_filesystem(search_term, base_path):
-    """在文件系统中搜索匹配的文件"""
+    """在文件系统中搜索匹配的文件（优化版）"""
     results = []
     search_lower = search_term.lower()
     
+    # 需要跳过的目录（包含大量CAD/图纸文件，搜索时跳过避免超时）
+    skip_dirs = {'MCS图纸', 'MCS图纸_DXF测试', 'MCS图纸_DXF_PDF', 'BOM_清单', '__pycache__', '.git'}
+    
     for root, dirs, files in os.walk(base_path):
-        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        # 过滤掉大型CAD目录
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in skip_dirs and not d.endswith('图纸')]
         
         for filename in files:
             if filename.startswith('.'):
@@ -54,7 +58,6 @@ def search_filesystem(search_term, base_path):
             
             # 检查文件名是否匹配
             if search_lower in filename.lower():
-                rel_path = os.path.relpath(os.path.join(root, filename), base_path)
                 filepath = os.path.join(root, filename)
                 
                 try:
@@ -69,6 +72,7 @@ def search_filesystem(search_term, base_path):
                     else:
                         size_str = f'{size/(1024*1024*1024):.1f}GB'
                     
+                    rel_path = os.path.relpath(filepath, base_path)
                     results.append({
                         'type': 'filesystem',
                         'name': filename,
@@ -77,6 +81,10 @@ def search_filesystem(search_term, base_path):
                         'ext': filename.rsplit('.', 1)[1].lower() if '.' in filename else '',
                         'static_url': url_for('static', filename='uploads/' + rel_path.replace('\\', '/')),
                     })
+                    
+                    # 限制搜索结果数量
+                    if len(results) >= 100:
+                        return results
                 except Exception:
                     continue
     

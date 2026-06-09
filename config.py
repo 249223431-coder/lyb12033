@@ -8,6 +8,17 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(BASE_DIR, 'instance', 'team.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # SQLite WAL模式 + 连接池优化，支持并发读写
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'connect_args': {
+            'check_same_thread': False,
+            'timeout': 20,          # 等待锁的超时时间
+        },
+        'pool_size': 10,            # 连接池大小
+        'pool_recycle': 300,        # 连接回收时间(秒)
+        'pool_pre_ping': True,      # 使用前检查连接有效性
+        'max_overflow': 10,         # 最大溢出连接数
+    }
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB max upload
     ALLOWED_EXTENSIONS = {
