@@ -241,7 +241,17 @@ def push():
             safety = f'  [注意：{it.safety_notes}]' if it.safety_notes else ''
             lines.append(f'  · {name}{safety}')
 
-        content = f'停机日期：{plan.plan_date.strftime("%Y-%m-%d")} {plan.start_time}-{plan.end_time}\n\n你的任务项目：\n' + '\n'.join(lines)
+        # 生成简洁的文本格式内容
+        task_lines = []
+        for idx, it in enumerate(unique_items, 1):
+            name = it.project_name or '(无名称)'
+            safety = it.safety_notes
+            line = f'{idx}. {name}'
+            if safety:
+                line += f' 【注意：{safety}】'
+            task_lines.append(line)
+        
+        content = f'停机日期：{plan.plan_date.strftime("%Y-%m-%d")} {plan.start_time}-{plan.end_time}\n\n任务清单：\n' + '\n'.join(task_lines)
         notification = Notification(
             user_id=uid,
             title=f'停机计划任务 - {plan.plan_date.strftime("%Y-%m-%d")}',
