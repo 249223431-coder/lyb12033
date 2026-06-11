@@ -108,18 +108,18 @@ function toggleFolderMode() {
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex gap-2 justify-content-between align-items-center">
+        <div class="d-flex gap-2 justify-content-between align-items-center mb-2">
             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
                 <i class="bi bi-plus-lg"></i> 上传文件
             </button>
             <a href="{{ url_for('documents.browse') }}" class="btn btn-sm btn-outline-success" style="border-radius:20px">
                 <i class="bi bi-folder2-open"></i> 浏览
             </a>
-            <form class="d-flex gap-1 flex-grow-1">
-                <input type="search" name="search" class="form-control form-control-sm" placeholder="搜索..." value="{{ search }}">
-                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
-            </form>
         </div>
+        <form class="d-flex gap-1">
+            <input type="search" name="search" class="form-control" placeholder="搜索资料..." value="{{ search }}">
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+        </form>
     </div>
 </div>
 

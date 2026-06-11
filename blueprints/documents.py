@@ -46,11 +46,11 @@ def search_filesystem(search_term, base_path):
     search_lower = search_term.lower()
     
     # 需要跳过的目录（包含大量CAD/图纸文件，搜索时跳过避免超时）
-    skip_dirs = {'MCS图纸', 'MCS图纸_DXF测试', 'MCS图纸_DXF_PDF', 'BOM_清单', '__pycache__', '.git'}
+    skip_dirs = {'MCS图纸_DXF测试', 'MCS图纸_DXF_PDF', 'BOM_清单', '__pycache__', '.git'}
     
     for root, dirs, files in os.walk(base_path):
         # 过滤掉大型CAD目录
-        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in skip_dirs and not d.endswith('图纸')]
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in skip_dirs]
         
         for filename in files:
             if filename.startswith('.'):
