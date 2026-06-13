@@ -8,6 +8,94 @@ from config import Config
 
 spare_parts_bp = Blueprint('spare_parts', __name__)
 
+# ========================================
+# 物料表格缓存（ERP物料库）
+# ========================================
+import openpyxl
+import threading
+
+_material_cache = []
+_material_cache_loaded = False
+_material_cache_lock = threading.Lock()
+
+def _load_material_cache():
+    """加载物料表格到内存缓存"""
+    global _material_cache, _material_cache_loaded
+    if _material_cache_loaded:
+        return
+    
+    with _material_cache_lock:
+        if _material_cache_loaded:
+            return
+        
+        excel_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '物料.xlsx')
+        if not os.path.exists(excel_path):
+            _material_cache_loaded = True
+            return
+        
+        try:
+            wb = openpyxl.load_workbook(excel_path, read_only=True, data_only=True)
+            ws = wb.active
+            
+            # 跳过标题行，从第2行开始
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or not row[0]:  # 跳过空行
+                    continue
+                
+                material_id = str(row[0]).strip() if row[0] else ''  # 物料号
+                material_desc = str(row[4]).strip() if row[4] else ''  # 物料描述
+                price = str(row[3]).strip() if row[3] else ''  # 价格
+                
+                # 跳过标记为删除的物料
+                if '删除' in material_desc:
+                    continue
+                
+                # 清理HTML实体
+                material_desc = material_desc.replace('&#x', '\\u').replace(';', '')
+                
+                if material_id and material_desc:
+                    _material_cache.append({
+                        'id': material_id,
+                        'name': material_desc,
+                        'price': price,
+                        'material_group': str(row[7]).strip() if row[7] else ''  # 物料组
+                    })
+            
+            wb.close()
+            _material_cache_loaded = True
+            print(f'[物料缓存] 已加载 {len(_material_cache)} 条物料记录')
+            
+        except Exception as e:
+            print(f'[物料缓存] 加载失败: {e}')
+            _material_cache_loaded = True
+
+def _search_material_cache(keyword):
+    """搜索物料缓存"""
+    if not _material_cache_loaded:
+        _load_material_cache()
+    
+    keyword = keyword.lower()
+    results = []
+    
+    for item in _material_cache:
+        # 搜索物料号或物料描述
+        if keyword in item['id'].lower() or keyword in item['name'].lower():
+            results.append({
+                'id': item['id'],
+                'name': item['name'],
+                'part_code': item['id'],
+                'price': item['price'],
+                'material_group': item['material_group'],
+                'source': '物料库'
+            })
+            if len(results) >= 20:  # 限制返回数量
+                break
+    
+    return results
+
+# 启动时异步加载物料缓存
+threading.Thread(target=_load_material_cache, daemon=True).start()
+
 
 @spare_parts_bp.route('/')
 @login_required
@@ -232,16 +320,29 @@ def api_search():
     q = request.args.get('q', '').strip()
     if len(q) < 1:
         return jsonify([])
+    
+    results = []
+    
+    # 1. 搜索备件库
     parts = SparePart.query.filter(
         SparePart.is_active == True,
         SparePart.name.contains(q)
     ).order_by(SparePart.name).limit(10).all()
-    return jsonify([{
-        'id': p.id,
-        'name': p.name,
-        'model_spec': p.model_spec or '',
-        'part_code': p.part_code,
-    } for p in parts])
+    
+    for p in parts:
+        results.append({
+            'id': p.id,
+            'name': p.name,
+            'model_spec': p.model_spec or '',
+            'part_code': p.part_code,
+            'source': '备件库'
+        })
+    
+    # 2. 搜索物料库
+    material_results = _search_material_cache(q)
+    results.extend(material_results)
+    
+    return jsonify(results)
 
 
 # ========================================

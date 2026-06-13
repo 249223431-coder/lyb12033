@@ -159,10 +159,13 @@ function searchParts() {
                 } else {
                     var html = '';
                     data.forEach(p => {
-                        html += '<div class="purch-dropdown-item" onclick="selectPart(\'' + escAttr(p.name) + '\', \'' + escAttr(p.model_spec) + '\', \'' + escAttr(p.part_code) + '\')">' +
+                        var sourceClass = p.source === '物料库' ? 'source-material' : 'source-spare';
+                        var sourceIcon = p.source === '物料库' ? '&#x1F4E6;' : '&#x1F3E0;';
+                        var priceInfo = p.price ? ' | 价格: ' + p.price : '';
+                        html += '<div class="purch-dropdown-item" onclick="selectPart(\'' + escAttr(p.name) + '\', \'' + escAttr(p.model_spec) + '\', \'' + escAttr(p.part_code) + '\', \'' + escAttr(p.price || '') + '\')">' +
                             '<div class="part-name">' + p.name + '</div>' +
-                            '<div class="part-spec">' + (p.model_spec || '-') + '</div>' +
-                            '<div class="part-code">编码: ' + p.part_code + '</div>' +
+                            '<div class="part-spec">' + (p.model_spec || '-') + priceInfo + '</div>' +
+                            '<div class="part-code">编码: ' + p.part_code + ' <span class="' + sourceClass + '">' + sourceIcon + ' ' + p.source + '</span></div>' +
                             '</div>';
                     });
                     dd.innerHTML = html;
@@ -171,7 +174,7 @@ function searchParts() {
             });
     }, 300);
 }
-function selectPart(name, spec, code) {
+function selectPart(name, spec, code, price) {
     document.getElementById('partSearch').value = name;
     document.getElementById('partName').value = name;
     if (spec) document.getElementById('modelSpec').value = spec;
@@ -189,4 +192,20 @@ document.addEventListener('click', function(e) {
     }
 });
 </script>
+<style>
+.source-material { 
+    background: #e8f5e9; 
+    color: #2e7d32; 
+    padding: 2px 6px; 
+    border-radius: 4px; 
+    font-size: 10px;
+}
+.source-spare { 
+    background: #e3f2fd; 
+    color: #1565c0; 
+    padding: 2px 6px; 
+    border-radius: 4px; 
+    font-size: 10px;
+}
+</style>
 {% endblock %}
