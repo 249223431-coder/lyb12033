@@ -1,0 +1,38 @@
+# Build output
+bin/
+obj/
+[Bb]uild/
+
+# IDE files
+.vs/
+.trae/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Runtime files
+*.log
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Compiled binaries (kept locally but not in repo)
+*.exe
+*.pdb
+# Exclude DLLs except the native lib in libs/
+*.dll
+!libs/*.dll
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
